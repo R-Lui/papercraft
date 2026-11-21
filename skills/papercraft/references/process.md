@@ -63,12 +63,12 @@ First read the prompt and every reference the user gave the way `references/gall
 the gallery world closest to the brief and one far from it: the quality bar and the range, never content.
 
 One page, written before any content code. Every agent prompt and every critic gets it. The style card is the paper
-spec of `SKILL.md` (section 2), filled in with numbers, plus three lines: the medium, the owner's locked decisions and
+spec of `SKILL.md` (section 3), filled in with numbers, plus three lines: the medium, the owner's locked decisions and
 the review set (the spec's GROUND line names this world's floor; the flat page and open built ground are
 `SKILL.md` laws 8-9). Keep one card, not two:
 
 ```
-MEDIUM      <game | animation | interactive scene | web UI | video>, <aspect, frame size, length>
+MEDIUM      <game | animation | interactive scene | web UI | video>, <aspect, frame size, fps, length> (formats.md)
 LOCKED      <owner decisions, verbatim, dated>
 REVIEW SET  <named shots: hero, close-up, wide, mid-motion, night ...> at <seed>, <camera>, <size>
 ```
@@ -100,12 +100,14 @@ of scope, because critics will ask for it.
 
 ## 2. Pick ONE target and measure it
 
-One concrete target beats a mood board; the gallery (`references/gallery.md`) is the quality bar, never a content
-target. In order of preference:
+For judging frames, one concrete target beats a mood board (a mood board still gives the theme and the designs:
+`SKILL.md` section 2); the gallery (`references/gallery.md`) is the quality bar, never a content target. In order of
+preference:
 1. An image the owner picks or supplies.
-2. An image generated from the build's own screenshots ("this world, in this exact visual language, but better").
-   It stays reachable. Idealised targets generated from words alone could not be matched: blind critics picked the
-   build as the imitation in 25 of 26 trials, and the "fool the critic" loop could not end on its own.
+2. If the user asked for image generation: an image generated from the build's own screenshots ("this world, in
+   this exact visual language, but better"). It stays reachable. Idealised targets generated from words alone could
+   not be matched: blind critics picked the build as the imitation in 25 of 26 trials, and the "fool the critic" loop
+   could not end on its own.
 3. Real photos of paper objects, for material truth only (edge width, penumbra, fibre). They are trivially identified
    as "the original" by context (hands, sleeves, printed titles), so never use them as the blind A/B reference.
 4. No images allowed or available: a **written target**. The style card, the reference numbers in step 6, and a palette
@@ -171,8 +173,9 @@ fold = a house, a hab module, a market hall).
   crown's width plus berries or flowers in contrasting accents (`accentsFor(base)`); bush cards with a darker
   scalloped outer band around an inner panel of motifs; stone blocks with pale mortar; wood grain. Find your
   subject's own motifs the same way (rivets and panel lines, scales and pores, frost ferns). Without image
-  generation: `references/procedural-art.md` (it counts these against the shipped prints). With it:
-  `references/image-gen.md` (generate sheets in the target's style, curate, budget one regeneration, always look).
+  generation: `references/procedural-art.md` (it counts these against the shipped prints). With it (only when the
+  user asks: SKILL.md section 2): `references/image-gen.md` (references for the designs; prints inside the work only
+  if the user wants them; always look).
 - **Design for the camera:** pick each kind's structure type from `references/structures.md` section 0, and let
   nothing be seen edge-on: single cards face the camera (+-14 deg when yaw is omitted); low things (grass, bushes,
   flowers, rocks) are single or layered cards facing the camera, never crosses; anything upright and round that is
@@ -352,7 +355,7 @@ critics argued against several of them.
 | No game-y UI | collectable stamps with confetti were removed; cursor hidden; no on-screen UI beyond a fading hint; diegetic paper UI (a map page sliding up) is fine; ask before adding "game" features to a calm piece (a disc under the figure went too); `references/paper-ui.md` |
 | Only what paper can do | hinges, folds, layers, light through card; no scaling or fading in (except the pop, flip and shrink-away verbs of `references/motion.md` for small things), no dithered see-through, no glow haze, no plastic sheen |
 | Endless means seamless | no page border, seams or tile grid in an infinite scene (the critics' "show the book edge" was vetoed) |
-| References steer style, not content | owner style images guide light, material, depth of field and density, never subjects |
+| References steer what they are for | owner style images (already paper) guide light, material, depth of field and density, never subjects; a concept board gives the theme and the designs, rebuilt in paper (SKILL.md section 2) |
 
 Paste a "STANDING DECISIONS - do not undo" block (section 9) into every agent prompt; critics kept asking for
 rejected things (book edges, a dark table, more glow, more sound).
@@ -450,6 +453,8 @@ STANDING DECISIONS (owner; do not undo; they override critics, references and me
       off-centre and readable in every shot (bloom, occlusion, contrast).
 - [ ] Motion rotates about hinges only (plus small flex and the pop, flip and shrink-away verbs for small things);
       triggers have hysteresis; the camera rests when nothing moves.
+- [ ] No card cuts into another, at rest or moving: the hero's check is clean (`__papercraft.clips()`), moving
+      constructions pass `cardClips` at a few poses, nothing flickers where cards overlap.
 - [ ] Sound is quiet, sparse and low-passed, and the owner has listened to it.
 - [ ] No game-y UI, no text or logos, no border, seam or grid in an endless scene; nothing a paper object could not do.
 - [ ] Capture is deterministic: every review frame is `restart(); step(T)` on a `?capture` page; two runs give

@@ -519,7 +519,7 @@ export function buildAtlas(items, sheet, { size = 2048, pad = 8, bleed = 4, page
   screen pixel; the rim in px follows from it. Bake 4-6 seeds per kind (section 0), never repeat one inside a
   cluster, and keep at most ~3 identical props in view.
 - The same contract (`rect`, `outline`, `kind`, `pxPerUnit`, `aspect`, `tone`) is what an image-generated atlas writes
-  (`image-gen.md` section 6), so either source drops in.
+  (`image-gen.md` section 8), so either source drops in.
 
 ## 5. SVG, CSS and video
 

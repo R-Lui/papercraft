@@ -5,12 +5,16 @@
 // bundled scene.js is the countryside worked example). URL switches: ?capture (no hint), ?test (your scene's test
 // cards), ?mood=golden|dusk|night, ?walk (WASD / arrows; createHarness({ play: true }) makes it the default), ?still
 // (no walking: the fixed overview), ?roam (full prints everywhere), ?diag=key (the key alone), ?ss=2 (2x supersampled
-// review captures).
+// review captures), ?size=1080x1920 (render exactly that many pixels, scaled to fit the window: a video or still
+// format), ?aspect=9:16 (the largest frame of that shape in the window), ?res=1.5 (print resolution, default from the
+// frame), ?closer=1.3 (a frame taller than wide comes closer), ?safe=all|meta|tiktok|shorts (outline a vertical
+// platform's UI-safe area and its feed crops over the frame).
+// Formats, safe areas and what scales with them: references/formats.md.
 // In your own project: copy assets/lib/ (and assets/examples/ only if you import one) and this file, keep it as it is,
 // and map "papercraft/" in your page's import map to the folder that holds lib/ (the template's index.html maps it to ../../).
 import * as THREE from 'three';
 import * as P2 from 'papercraft/lib/paperkit-2d.js';
-import { paperTextures, paperMaterial, makeCard, crossCard, WalkField, fitShadow, hinge, paperLights, enableSoftShadows, PaperPost, PAPER_LIGHT } from 'papercraft/lib/paperkit-3d.js';
+import { paperTextures, paperMaterial, makeCard, crossCard, WalkField, fitShadow, hinge, paperLights, enableSoftShadows, PaperPost, PAPER_LIGHT, setPrintScale, cardClips } from 'papercraft/lib/paperkit-3d.js';
 import { PaperSound } from 'papercraft/lib/paper-sound.js';
 import { windSway } from 'papercraft/lib/paper-motion.js';
 
@@ -40,7 +44,12 @@ export const MOODS = {
  * default the hero; it eases to him on his first step), mood ('golden' | 'dusk' | 'night' | a key of moods: the world's
  * own light; ?mood= overrides it), walkArea { x0, x1, z0, z1 } (where he may walk: the walking camera goes only as far
  * as framing him there needs, and inReach(x, z) says what any of those framings can show: fill with it), camBox
- * { x0, x1, z0, z1 } (hold the camera's target in your own box instead: a single diorama the camera barely leaves).
+ * { x0, x1, z0, z1 } (hold the camera's target in your own box instead: a single diorama the camera barely leaves),
+ * size [w, h] / aspect (number or 'w:h') (the output frame, as ?size / ?aspect), subject [x, z] (what a frame narrower
+ * than 16:9 swings toward so it stays in view: the hero's start or the landmark; default focus), rotate (true: also
+ * fill the frame turned 90 degrees, for a phone page that may be rotated). Author the view for 16:9: another shape
+ * keeps the lens on its short side (view.closer brings a tall frame closer: formats.md). H.frame { w, h, aspect, fovY,
+ * wide, tall, lat, mag, printScale } describes it.
  * H.onStep(fn): fn(time, dt) every fixed step (fireflies, flicker, a turning wheel): animate on the harness clock.
  * H.onRestart(fn): fn() on restart(), so seeded extras replay too (paper-life: H.onRestart(() => life.reset(H.target))).
  * The hero is a page-level popup (no parent). Anywhere he stands, on the page or on a deck, he rides whatever is under
@@ -56,7 +65,8 @@ export const MOODS = {
  * limbs there. turn: 'yaw' (default) or 'flip' (a flat card that mirrors to face left / right: critters, extras).
  */
 export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, ground = '#d9d2c2', view: view0 = {}, testView = { dist: 38, target: [3, 1.5, -6] },
-  heroHeight = 3.6, light = {}, lens = {}, walk: walkOpts = { step: 0.75, radius: 0.6 }, moods = MOODS, play = false, focus = null, mood = null, stock = '#f7f0e2', walkArea = null, camBox = null } = {}) {
+  heroHeight = 3.6, light = {}, lens = {}, walk: walkOpts = { step: 0.75, radius: 0.6 }, moods = MOODS, play = false, focus = null, mood = null, stock = '#f7f0e2', walkArea = null, camBox = null,
+  size = null, aspect = null, subject = null, rotate = false } = {}) {
   const T0 = performance.now();
   // print costs by the scene line that asked for them: __papercraft.printStats() (and a console line when the build is
   // slow) says which pieces to print smaller (popup res), share (one print, many cards) or cut
@@ -82,11 +92,8 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
   flags.ROAM = flags.WALK || Q.has('roam');            // the camera can go anywhere: every row prints at full quality
   if (Q.has('capture')) document.getElementById('hint')?.remove();
 
-  // ---- renderer, camera, paper -----------------------------------------------------------------------------------
+  // ---- renderer, the output frame, camera, paper ------------------------------------------------------------------
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
-  // ?ss=2 supersamples (renders at 2x and lets the browser downsample): review captures at the shipped frames' edge
-  // smoothness; the live view on a retina screen gets the same from its pixel ratio
-  renderer.setPixelRatio(Math.min(3, Math.min(devicePixelRatio, 2) * Math.max(1, Number(Q.get('ss')) || 1)));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.BasicShadowMap;     // the PCSS patch reads raw depth
   document.body.appendChild(renderer.domElement);
@@ -94,36 +101,122 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
   scene.background = new THREE.Color(ground);
   const view = { yaw: 0, pitch: 47, dist: 66, fov: 26, ...view0 };
   view.tyaw = view.yaw; view.tpitch = view.pitch;
-  const target = new THREE.Vector3(...(view0.target || [2, 1.5, -6]));
-  if (flags.TEST) { view.dist = testView.dist; target.set(...testView.target); }   // close enough to judge edges, fibre, shadows, blur
-  const camera = new THREE.PerspectiveCamera(view.fov, 16 / 9, 5, 600);
+  if (flags.TEST) view.dist = testView.dist;          // close enough to judge edges, fibre, shadows, blur
+  if (Q.get('closer')) view.closer = Number(Q.get('closer'));   // ?closer=1.3: a tall frame comes closer (below)
+  // The output frame. ?size=WxH (or size): exactly that many pixels (a video or still format, references/formats.md),
+  // scaled to fit the window; ?aspect=W:H (or aspect): the largest frame of that shape in the window; neither: the
+  // window. ?ss=2 supersamples (renders at 2x and lets the browser downsample): review captures at the shipped frames'
+  // edge smoothness; the live view on a retina screen gets the same from its pixel ratio.
+  const SS = Math.max(1, Number(Q.get('ss')) || 1);
+  const pair = (s, re) => { const m = re.exec(String(s ?? '')); return m ? [Number(m[1]), Number(m[2])] : null; };
+  const SIZE = pair(Q.get('size'), /^(\d+)x(\d+)$/i) || size;
+  const ASPECT = (() => { const p = pair(Q.get('aspect') ?? aspect, /^([\d.]+)\s*[:x/]\s*([\d.]+)$/i); return p ? p[0] / p[1] : typeof aspect === 'number' ? aspect : null; })();
+  function frameBox() {   // drawing size (CSS px; times pr = device px), its size on screen (cw x ch) and pixel ratio
+    if (SIZE) { const k = Math.min(1, innerWidth / SIZE[0], innerHeight / SIZE[1]); return { w: SIZE[0], h: SIZE[1], cw: SIZE[0] * k, ch: SIZE[1] * k, pr: SS }; }
+    const pr = Math.min(3, Math.min(devicePixelRatio, 2) * SS);
+    if (ASPECT) { const cw = Math.min(innerWidth, innerHeight * ASPECT), ch = cw / ASPECT; return { w: Math.round(cw), h: Math.round(ch), cw, ch, pr }; }
+    return { w: innerWidth, h: innerHeight, cw: innerWidth, ch: innerHeight, pr };
+  }
+  // The view is authored for 16:9. Another shape keeps the lens on its SHORT side: a 9:16 frame is the 16:9 camera
+  // turned upright (the hero keeps his size against the frame's width; it sees more of the world above and below), a
+  // square one is the 16:9 frame without its sides. view.closer brings a frame taller than wide closer, as a crop from
+  // the same camera: at 9:16 by that factor (1 = the camera turned upright, it shows the most; default 1.33, so the
+  // hero reads on a phone; 1.78 = the 16:9 frame's own height, a close-up), less as the frame nears square. wide /
+  // tall: its extent against the 16:9 frame (tangent space); lat: how far a subject beside the target stays beside it
+  // (a narrow frame swings toward the subject); mag: how much bigger things look than at 16:9.
+  const REF = 16 / 9, rad = THREE.MathUtils.degToRad;
+  const lensFor = (a, closer = view.closer ?? 1.33) => {
+    const z = a < 1 ? Math.min(1 / a, Math.max(1, closer) ** (Math.log(1 / a) / Math.log(REF))) : 1;
+    const ty0 = Math.tan(rad(view.fov / 2)), ty = a >= 1 ? ty0 : ty0 / a / z, wide = ty * a / (ty0 * REF);
+    return { aspect: a, fovY: THREE.MathUtils.radToDeg(2 * Math.atan(ty)), wide, tall: ty / ty0, lat: Math.min(1, a / REF) * Math.min(1, wide), mag: z };
+  };
+  const box0 = frameBox();
+  let LENS = lensFor(box0.w / box0.h);
+  const FOLLOW = view.follow || [-9.3, -9];
+  const placeOn = (cam, t, yawDeg, pitchDeg) => {
+    const yaw = rad(yawDeg), pit = rad(pitchDeg);
+    cam.position.set(t.x + Math.sin(yaw) * Math.cos(pit) * view.dist, t.y + Math.sin(pit) * view.dist, t.z + Math.cos(yaw) * Math.cos(pit) * view.dist);
+    cam.lookAt(t); cam.updateMatrixWorld();
+  };
+  const subj = subject || (focus ? [focus[0], focus[2]] : null);   // [x, z] (or [x, y, z])
+  const yawR = () => { const yaw = rad(view.yaw); return [Math.cos(yaw), -Math.sin(yaw)]; };   // the camera's right on the page
+  const _aim = new THREE.PerspectiveCamera(), _p = new THREE.Vector3();
+  // How far to move a target along the page, away from the camera, so the point s sits at screen height y (-1 bottom
+  // .. 1 top) in a frame of lens L (a few secant steps on the projection).
+  function liftFor(L, s, t, y) {
+    _aim.fov = L.fovY; _aim.aspect = L.aspect; _aim.updateProjectionMatrix();
+    const yaw = rad(view.yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw), t2 = new THREE.Vector3();
+    const f = (d) => { placeOn(_aim, t2.set(t.x + fx * d, t.y, t.z + fz * d), view.yaw, view.pitch); return _p.copy(s).project(_aim).y - y; };
+    let d0 = 0, d1 = 2, f0 = f(d0), f1 = f(d1);
+    for (let i = 0; i < 6 && Math.abs(f1) > 1e-4 && Math.abs(f1 - f0) > 1e-9; i++) { const d2 = d1 - f1 * (d1 - d0) / (f1 - f0); d0 = d1; f0 = f1; d1 = d2; f1 = f(d1); }
+    return d1;
+  }
+  // A frame taller than wide lifts the subject toward ~42 % from the top (view.subjectY, -1 bottom .. 1 top; default
+  // 0.15 at 9:16, less as the frame nears square), clear of the caption and buttons a vertical platform lays over the
+  // lower third (formats.md: safe areas).
+  const liftY = (L, y0) => { const w = Math.min(1, (1 - L.aspect) / (1 - 9 / 16)); return view.subjectY ?? (y0 + (0.15 - y0) * w); };
+  const lifted = (L, s, t) => {   // t moved along the page so s sits at its lifted height in a frame of lens L
+    _aim.fov = L.fovY; _aim.aspect = L.aspect; _aim.updateProjectionMatrix(); placeOn(_aim, t, view.yaw, view.pitch);
+    const d = liftFor(L, s, t, liftY(L, _p.copy(s).project(_aim).y)), yaw = rad(view.yaw);
+    return t.set(t.x - Math.sin(yaw) * d, t.y, t.z - Math.cos(yaw) * d);
+  };
+  function aimed(L) {    // the authored target, swung toward the subject as far as this frame shape needs
+    const t = new THREE.Vector3(...(flags.TEST ? testView.target : (view0.target || [2, 1.5, -6])));
+    if (!subj || flags.TEST) return t;
+    const [rx, rz] = yawR(), side = (subj[0] - t.x) * rx + (subj[subj.length - 1] - t.z) * rz, k = side * (1 - L.lat);
+    t.set(t.x + rx * k, t.y, t.z + rz * k);
+    return L.aspect < 1 ? lifted(L, new THREE.Vector3(subj[0], subj.length > 2 ? subj[1] : 1.8, subj[subj.length - 1]), t) : t;
+  }
+  // the walking camera's offset from the hero for lens L: sideways it shrinks with lat; a tall frame lifts him the way
+  // it lifts the subject
+  function followFor(L) {
+    const kd = view.dist / 66, fo = [FOLLOW[0] * L.lat, FOLLOW[1]];
+    if (L.aspect >= 1) return fo;
+    const t = lifted(L, new THREE.Vector3(0, 1.8, 0), new THREE.Vector3(fo[0] * kd, 1.5, fo[1] * kd));
+    return [t.x / kd, t.z / kd];
+  }
+  const target = aimed(LENS);
+  const camera = new THREE.PerspectiveCamera(LENS.fovY, LENS.aspect, 5, 600);
+  // Print resolution: the kit's prints are tuned for a 1080 px short side at the template's distance and lens (~35 px
+  // per world unit at the target). A bigger output (?size: a 4K frame prints 2x; a tall frame brought closer by its
+  // mag) or a closer camera prints finer and builds slower; the live window keeps 1x for its size. ?res= sets it.
+  const PRINT = Number(Q.get('res')) || Math.min(2.5, Math.max(1, (SIZE ? LENS.mag * Math.min(...SIZE) : 1080) / (2 * view.dist * Math.tan(rad(view.fov / 2))) / 35.4));
+  setPrintScale(PRINT);
+  const frame = { w: box0.w, h: box0.h, aspect: LENS.aspect, fovY: LENS.fovY, wide: LENS.wide, tall: LENS.tall, lat: LENS.lat, mag: LENS.mag, printScale: PRINT, size: SIZE };
   // the paper stock under every print and the ground: warm cream by default; a cold world (snow, ice, a pale station)
   // takes a cooler stock (~'#eef1f6'), or the multiplied cream warms its whites to beige
   const paper = paperTextures(renderer, { color: stock, seed: 4, unitsPerTile: 5, fibres: 1.5, mottle: 0.08, normalStrength: 3 });
-  function placeCamera(yawDeg, pitchDeg) {
-    const yaw = THREE.MathUtils.degToRad(yawDeg), pit = THREE.MathUtils.degToRad(pitchDeg);
-    camera.position.set(target.x + Math.sin(yaw) * Math.cos(pit) * view.dist, target.y + Math.sin(pit) * view.dist, target.z + Math.cos(yaw) * Math.cos(pit) * view.dist);
-    camera.lookAt(target);
-  }
-  placeCamera(view.yaw, view.pitch); camera.updateMatrixWorld();
+  function placeCamera(yawDeg, pitchDeg) { placeOn(camera, target, yawDeg, pitchDeg); }
+  placeCamera(view.yaw, view.pitch);
+  // rotate: a phone page may be turned, so the build also fills the frame turned 90 degrees (its own lens and aim)
+  const cam2 = rotate && !SIZE && !ASPECT ? (() => { const L2 = lensFor(1 / LENS.aspect), c = new THREE.PerspectiveCamera(L2.fovY, L2.aspect, 5, 600); placeOn(c, aimed(L2), view.yaw, view.pitch); return c; })() : null;
   const _v = new THREE.Vector3();
-  /** Is (x, z) in the frame (with margin m, at height y)? Fill only where the camera can see. */
   /** The point on the page (y = 0) under screen position (sx, sy) in -1..1 (sy = 1 the top edge), in the overview
    *  camera: e.g. groundAt(0, 0.95) is where the far edge of the frame meets the page (place backdrops just inside it). */
   const _ray = new THREE.Raycaster(), _pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  const groundAt = (sx, sy) => { camera.updateMatrixWorld(); _ray.setFromCamera({ x: sx, y: sy }, camera); const p = new THREE.Vector3(); return _ray.ray.intersectPlane(_pl, p) ? p : null; };
-  const inFrame = (x, z, m = 0.12, y = 1) => { _v.set(x, y, z).project(camera); return Math.abs(_v.x) < 1 + 2 * m && _v.y > -1 - m && _v.y < 1 + m; };
-  /** Inside the lens's sharp-to-mid band at the starting view (the far top rows and the big near cards are blurred). */
-  const sharpAt = (x, z, y = 1) => { _v.set(x, y, z).project(camera); return _v.y > -0.95 && _v.y < 0.7; };
+  const hitOn = (cam, sx, sy) => { _ray.setFromCamera({ x: sx, y: sy }, cam); const p = new THREE.Vector3(); return _ray.ray.intersectPlane(_pl, p) ? p : null; };
+  const groundAt = (sx, sy) => { camera.updateMatrixWorld(); return hitOn(camera, sx, sy); };
+  /** Is (x, z) in the frame (with margin m, at height y)? Fill only where the camera can see. */
+  const inCam = (cam, x, z, m, y) => { _v.set(x, y, z).project(cam); return Math.abs(_v.x) < 1 + 2 * m && _v.y > -1 - m && _v.y < 1 + m; };
+  const inFrame = (x, z, m = 0.12, y = 1) => inCam(camera, x, z, m, y) || (cam2 !== null && inCam(cam2, x, z, m, y));
+  /** Inside the lens's sharp-to-mid band at the starting view (the far top rows and the big near cards are blurred);
+   *  measured against the 16:9 frame's height, so a tall frame prints its extra rows above and below coarser. */
+  const sharpAt = (x, z, y = 1) => { _v.set(x, y, z).project(camera); const s = _v.y * LENS.tall; return s > -0.95 && s < 0.7; };
   // walkArea { x0, x1, z0, z1 }: where the hero may walk. The walking camera then goes only as far as framing him there
   // needs (its target is held inside), and inReach(x, z) says whether ANY of those framings can show (x, z): fill with
   // it, not inFrame, or the walk finds bare page past the overview. camBox { x0, x1, z0, z1 }: hold the camera's target
   // in a box of your own instead (a single diorama: a few units round the overview target, the hero walking inside the
-  // frame). Without either, inReach is inFrame and nothing is held.
-  const FOLLOW = view.follow || [-9.3, -9];
-  const reachR = (camBox || walkArea) && (() => { const kd = view.dist / 66;
-    const R = camBox || { x0: walkArea.x0 + FOLLOW[0] * kd, x1: walkArea.x1 + FOLLOW[0] * kd, z0: walkArea.z0 + FOLLOW[1] * kd, z1: walkArea.z1 + FOLLOW[1] * kd };
-    return { x0: Math.min(R.x0, target.x), x1: Math.max(R.x1, target.x), z0: Math.min(R.z0, target.z), z1: Math.max(R.z1, target.z) }; })();
+  // frame). Without either, inReach is inFrame and nothing is held. A frame narrower than 16:9 keeps him nearer its
+  // middle (the follow offset sideways shrinks with lat) and widens camBox sideways by the width it lost.
+  const FO = followFor(LENS);
+  const reachFor = (L, t) => { if (!camBox && !walkArea) return null; const kd = view.dist / 66, [fx, fz] = followFor(L).map((v) => v * kd);
+    let R = camBox || { x0: walkArea.x0 + fx, x1: walkArea.x1 + fx, z0: walkArea.z0 + fz, z1: walkArea.z1 + fz };
+    if (camBox && L.wide < 1) {
+      const lost = view.dist * Math.tan(rad(view.fov / 2)) * REF * (1 - L.wide), [rx, rz] = yawR();
+      R = { x0: R.x0 - Math.abs(rx) * lost, x1: R.x1 + Math.abs(rx) * lost, z0: R.z0 - Math.abs(rz) * lost, z1: R.z1 + Math.abs(rz) * lost };
+    }
+    return { x0: Math.min(R.x0, t.x), x1: Math.max(R.x1, t.x), z0: Math.min(R.z0, t.z), z1: Math.max(R.z1, t.z) }; };
+  const reachR = reachFor(LENS, target);
   const inReach = (x, z, m = 0.12, y = 1) => {
     if (!reachR) return inFrame(x, z, m, y);
     const nx = Math.max(1, Math.ceil((reachR.x1 - reachR.x0) / 6)), nz = Math.max(1, Math.ceil((reachR.z1 - reachR.z0) / 6));
@@ -131,6 +224,19 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
       if (inFrame(x - (reachR.x0 + (reachR.x1 - reachR.x0) * i / nx - target.x), z - (reachR.z0 + (reachR.z1 - reachR.z0) * j / nz - target.z), m, y)) return true;
     return false;
   };
+  // The printed sheet reaches past every edge of every frame shape from 9:16 to 2.39:1 the camera can take here, walking
+  // included, so every format gets the same sheet (a tall frame sees further up the page); its washes and drifts keep
+  // their density over the larger sheet.
+  const AREA0 = (bounds.x1 - bounds.x0) * (bounds.z1 - bounds.z0);
+  for (const a of [9 / 16, 16 / 9, 2.39]) {
+    const L = lensFor(a, 1), t = aimed(L), c = new THREE.PerspectiveCamera(L.fovY, a, 5, 600); placeOn(c, t, view.yaw, view.pitch);
+    const R = reachFor(L, t), offs = R ? [[R.x0 - t.x, R.z0 - t.z], [R.x1 - t.x, R.z1 - t.z]] : [[0, 0]];
+    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 1]]) {
+      const p = hitOn(c, sx * 1.1, sy * 1.1);
+      if (!p || p.distanceTo(c.position) > 400) continue;   // the top edge near the horizon: the haze hides that far
+      for (const [ox, oz] of offs) bounds = { x0: Math.min(bounds.x0, p.x + ox - 6), x1: Math.max(bounds.x1, p.x + ox + 6), z0: Math.min(bounds.z0, p.z + oz - 6), z1: Math.max(bounds.z1, p.z + oz + 6) };
+    }
+  }
 
   // ---- the printed ground: one continuous sheet, far bigger than the frame ----------------------------------------
   /**
@@ -142,13 +248,16 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
    * in drifts: fn(px, py) at clustered sheet positions) }. Then the paper is multiplied in and the sheet laid down.
    */
   function printGround(draw, { ppu = 22, seed = 20 } = {}) {
-    const G = bounds, W = (G.x1 - G.x0) * ppu, H = (G.z1 - G.z0) * ppu, rnd = P2.rng(seed);
-    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const G = bounds, gw = G.x1 - G.x0, gd = G.z1 - G.z0, W = Math.round(gw * ppu), H = Math.round(gd * ppu), rnd = P2.rng(seed);
+    // the sheet prints finer with the frame (PRINT), inside browser canvas limits; draw works in ppu pixels regardless
+    const k = Math.min(PRINT, 16000 / Math.max(W, H), Math.sqrt(1.2e8 / (W * H))), dens = gw * gd / AREA0;
+    const c = document.createElement('canvas'); c.width = Math.round(W * k); c.height = Math.round(H * k);
     const g = c.getContext('2d');
+    g.setTransform(k, 0, 0, k, 0, 0);
     const X = (x) => (x - G.x0) * ppu, Z = (z) => (z - G.z0) * ppu;
     g.fillStyle = ground; g.fillRect(0, 0, W, H);
     const washes = (cols, { scales = [[60, 180, 460, 0.3], [200, 50, 150, 0.2], [700, 10, 34, 0.12]] } = {}) => {
-      for (const [n, r0, r1, a] of scales) for (let i = 0; i < n; i++) {
+      for (const [n0, r0, r1, a] of scales) for (let i = 0, n = Math.round(n0 * dens); i < n; i++) {
         const x = rnd() * W, y = rnd() * H, r = r0 + rnd() * (r1 - r0), col = cols[Math.floor(rnd() * cols.length)];
         const gr = g.createRadialGradient(x, y, 0, x, y, r);
         gr.addColorStop(0, P2.rgba(col, a * 0.6)); gr.addColorStop(0.78, P2.rgba(col, a)); gr.addColorStop(0.9, P2.rgba(P2.shade(col, -0.15), a * 1.2)); gr.addColorStop(1, P2.rgba(col, 0));
@@ -226,7 +335,7 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
     const line = (pts, w, col) => { g.strokeStyle = col; g.lineWidth = w * ppu; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); pts.forEach(([x, z], i) => (i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z)))); g.stroke(); };
     const drifts = (fn, { n = 9000, inside = 0.5, outside = 0.005, threshold = 0.68 } = {}) => {   // sparse and clustered: an even sprinkle reads as a stamp
       const mask = P2.tileNoise(256, 9, rnd), at = (x, y) => mask[(Math.floor(y / H * 256) & 255) * 256 + (Math.floor(x / W * 256) & 255)];
-      for (let k = 0; k < n; k++) { const x = rnd() * W, y = rnd() * H; if (rnd() > (at(x, y) > threshold ? inside : outside)) continue; fn(x, y); }
+      for (let k = 0, N = Math.round(n * dens); k < N; k++) { const x = rnd() * W, y = rnd() * H; if (rnd() > (at(x, y) > threshold ? inside : outside)) continue; fn(x, y); }
     };
     draw({ g, W, H, ppu, X, Z, rnd, washes, torn, band, ribbon, bandOf, line, drifts, water });
     g.globalCompositeOperation = 'multiply'; g.fillStyle = g.createPattern(paper.sheet, 'repeat'); g.fillRect(0, 0, W, H); // the paper shows through
@@ -342,7 +451,7 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
   /** A group whose printed panes glow (P.glow): dim by day, lit at dusk and night. */
   const glowing = (group) => { glowers.push(group); group.traverse((o) => o.userData.setGlow?.(0.35)); };
 
-  const H = { THREE, P2, flags, renderer, scene, camera, paper, view, target, walk, hinges, spots, bounds, heroHeight, groundAt, stack, dome,
+  const H = { THREE, P2, flags, renderer, scene, camera, paper, view, target, walk, hinges, spots, bounds, frame, heroHeight, groundAt, stack, dome,
     printGround, popup, printed, cardOpts, inFrame, inReach, walkArea, sharpAt, lamp, glowing, hero: null, heroStride: null, stepHooks: [], onStep: (fn) => H.stepHooks.push(fn), restartHooks: [], onRestart: (fn) => H.restartHooks.push(fn), heroTurn: 'yaw', setHero: (h, { stride = null, turn = 'yaw' } = {}) => { H.hero = h; H.heroStride = stride; H.heroTurn = turn; }, start };
 
   // ---- start: light, lens, choreography, input, walking, the loop and the capture hook -------------------------------
@@ -400,12 +509,13 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
     // lean on an under-damped spring (he rocks once when he stops), a roll into turns
     const KEYS = { KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1], KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0] };
     const keys = new Set(), heroPos = new THREE.Vector3(), camOff = new THREE.Vector3(), shadowAt = new THREE.Vector3().copy(target);
-    const HERO0 = new THREE.Vector3(), TARGET0 = new THREE.Vector3().copy(target), FO = FOLLOW;
+    const HERO0 = new THREE.Vector3(), TARGET0 = new THREE.Vector3().copy(target);   // FO: the follow offset for this frame shape
     const SPEED = 1.9 * heroHeight, ACCEL = 28 * heroHeight, TURN = 13, LEAN = 3.5 * Math.PI / 180, LEAN_W = 2 * Math.PI * 3.4, LEAN_Z = 0.75, ROLL = 4 * Math.PI / 180;
     let facing = 1, moved = false;   // moved: the hero has walked (keys or walkPath): the camera follows, the lens too
     let walked = 0, gait = 0;        // the distance walked and how much he is walking (0 standing .. 1 striding)
     let heading = 0, heading0 = 0, yawRate = 0, lean = 0, leanV = 0; const vel = new THREE.Vector3();
     let looking = false;             // a look() review frame holds the camera until restart()
+    let steering = null;             // steer(x, z): the wanted direction on the page, as if held on a stick
     const DIST0 = view.dist;
     if (flags.WALK) {
       // physical keys (e.code: any layout, caps lock or shift), no modifier chords, all released when the page loses
@@ -442,7 +552,8 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
       let oR = (p.x - zc.x) * rx + (p.z - zc.z) * rz, oU = (p.x - zc.x) * ux + (p.z - zc.z) * uz;
       const dR = (p.x - zPrev.x) * rx + (p.z - zPrev.z) * rz, dU = (p.x - zPrev.x) * ux + (p.z - zPrev.z) * uz;
       zPrev.copy(p);
-      const sR = ZN.stillR * k, hR = ZN.hardR * k, sU = (oU >= 0 ? ZN.stillUp : ZN.stillDown) * k, hU = (oU >= 0 ? ZN.hardUp : ZN.hardDown) * k;
+      const kr = k * Math.min(1, LENS.wide);   // a frame narrower than 16:9 narrows the window sideways: he stays in it
+      const sR = ZN.stillR * kr, hR = ZN.hardR * kr, sU = (oU >= 0 ? ZN.stillUp : ZN.stillDown) * k, hU = (oU >= 0 ? ZN.hardUp : ZN.hardDown) * k;
       const v = Math.hypot(vel.x, vel.z);
       if (v > 0.2 * SPEED && dt > 0) {                         // steady walking one way: the window travels with him
         const nx = vel.x / v, nz = vel.z / v, a = 1 - Math.exp(-dt / 0.35);
@@ -547,6 +658,7 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
     function walkStep(dt) {
       let ix = 0, iz = 0;
       for (const c of keys) { ix += KEYS[c][0]; iz += KEYS[c][1]; }
+      if (steering) [ix, iz] = steering;                       // steer(x, z): a scripted stick (a video along a route)
       const il = Math.hypot(ix, iz), wx = il ? ix / il : 0, wz = il ? iz / il : 0;
       if (il && !moved) { moved = true; if (focus && !focusAt) { focusFrom.copy(post.focus); focusBlend = 0; } }   // the lens eases from the overview's subject to him
       // velocity: a constant-rate approach to the wanted one
@@ -603,18 +715,48 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
       }
       post.render(time);
     }
-    function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); post.setSize(w, h); }
+    // ?safe=: a vertical platform's UI-safe area (buttons, caption) and the feed crops (4:5, 3:4, 1:1) over a 9:16
+    // frame, as fractions [top, right, bottom, left] (references/formats.md); a preview aid, never part of the render
+    const SAFE = { meta: [0.14, 0.06, 0.35, 0.06], tiktok: [0.125, 0.111, 0.344, 0.111], shorts: [0.15, 0.178, 0.35, 0.044], all: [0.15, 0.178, 0.35, 0.111] };
+    function drawSafe(b) {
+      const id = Q.get('safe'); if (!id) return;
+      let el = document.getElementById('papercraft-safe');
+      if (!el) { el = document.createElement('div'); el.id = 'papercraft-safe'; el.style.cssText = 'position:absolute;pointer-events:none;z-index:5'; document.body.appendChild(el); }
+      Object.assign(el.style, { left: (innerWidth - b.cw) / 2 + 'px', top: (innerHeight - b.ch) / 2 + 'px', width: b.cw + 'px', height: b.ch + 'px' });
+      const box = ([t, r, bo, l], css) => `<div style="position:absolute;top:${t * 100}%;right:${r * 100}%;bottom:${bo * 100}%;left:${l * 100}%;${css}"></div>`;
+      el.innerHTML = box(SAFE[id] || SAFE.all, 'border:2px solid rgba(255,70,60,0.9)')
+        + [0.148, 0.125, 0.219].map((c) => box([c, 0, c, 0], 'border-top:1px dashed rgba(255,255,255,0.85);border-bottom:1px dashed rgba(255,255,255,0.85)')).join('');
+    }
+    // the frame: drawing size and letterbox, the lens for its shape (the short side keeps it), the overview swung toward
+    // the subject, the follow offset, and the lens's blur band
+    function resize() {
+      const b = frameBox(), el = renderer.domElement;
+      renderer.setPixelRatio(b.pr);
+      renderer.setSize(b.w, b.h, false);
+      Object.assign(el.style, { position: 'absolute', width: b.cw + 'px', height: b.ch + 'px', left: (innerWidth - b.cw) / 2 + 'px', top: (innerHeight - b.ch) / 2 + 'px' });
+      const L = lensFor(b.w / b.h), shape = Math.abs(L.aspect - LENS.aspect) > 1e-3;
+      LENS = L; camera.aspect = L.aspect; camera.fov = L.fovY; camera.updateProjectionMatrix();
+      [FO[0], FO[1]] = followFor(L);
+      if (shape) { TARGET0.copy(aimed(L)); if (!moved && !looking) { target.copy(TARGET0); placeCamera(view.yaw, view.pitch); } }
+      post.setSize(b.w, b.h); post.bandScale = 1 / L.tall; post.magnify = L.mag;
+      Object.assign(frame, { w: b.w, h: b.h, aspect: L.aspect, fovY: L.fovY, wide: L.wide, tall: L.tall, lat: L.lat, mag: L.mag });
+      drawSafe(b);
+    }
     addEventListener('resize', resize);
     resize();
     setOpen(true);
     heroPos.set(hero.group.position.x, 0, hero.group.position.z); HERO0.copy(heroPos); heading = heading0 = hero.group.rotation.y;
+    if (!subj && !flags.TEST && LENS.lat < 0.99) {   // a narrow frame and nothing to swing toward: say so if he is at its edge
+      _v.copy(hero.group.position).setY(1.8).project(camera);
+      if (Math.abs(_v.x) > 0.8 || Math.abs(_v.y) > 0.9) console.warn(`papercraft: the hero is at the edge of this ${frame.w}x${frame.h} frame: give createHarness a subject: [x, z] (his start) so a narrow frame swings toward him (references/formats.md)`);
+    }
     if (walkArea && (heroPos.x < walkArea.x0 || heroPos.x > walkArea.x1 || heroPos.z < walkArea.z0 || heroPos.z > walkArea.z1)) console.warn('papercraft: the hero starts outside walkArea: he cannot move');
     let last = performance.now(), auto = true;
     renderer.setAnimationLoop((now) => { if (!auto) return; step(Math.min(0.05, Math.max(0, (now - last) / 1000))); last = now; render(); }); // dt clamped to [0, 50 ms]
     function restart() { // a full reset: hinges flat, the hero back at his start, the camera on its first view
       time = 0; for (const h of hinges) h.reset(0);
       heroPos.copy(HERO0); sync(); facing = 1; hero.pivot.scale.x = 1; moved = false; looking = false; view.dist = DIST0;
-      heading = heading0; yawRate = 0; lean = 0; leanV = 0; vel.set(0, 0, 0); walked = 0; gait = 0; H.heroStride?.(0, 0); pose(0); assistOff();
+      heading = heading0; yawRate = 0; lean = 0; leanV = 0; vel.set(0, 0, 0); walked = 0; gait = 0; steering = null; H.heroStride?.(0, 0); pose(0); assistOff();
       for (const fn of H.restartHooks) fn();             // seeded extras (paper-life) replay from t = 0 too
       target.copy(TARGET0); zoneLive = false; tVel.set(0, 0, 0); keys.clear(); focusAt = null; focusBlend = 1; if (shadowAt.distanceTo(TARGET0) > 0.01) { shadowAt.copy(TARGET0); fitShadow(lights, shadowAt); }
       setOpen(true);
@@ -652,8 +794,22 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
       }
       return rows.join('\n');
     }
+    // The hero's cards never cut into each other, standing or anywhere in his stride: one card through another (or two
+    // in one plane) renders as a cut line sliding as he walks and turns, or as flicker. clips(n) poses him standing and
+    // through two stride cycles and returns the pairs that do (cardClips, references/mechanisms.md section 12).
+    function clips(n = 24) {
+      const found = new Map(), stride = H.heroStride, keep = [walked, gait];
+      const scan = (at) => { for (const c of cardClips(hero.group)) { const k = `${c.a} / ${c.b}`; if (!found.has(k)) found.set(k, { ...c, at }); } };
+      if (stride) stride(0, 0);
+      scan('standing');
+      if (stride) for (let i = 0; i < n; i++) { const w = i / n * 4.8; stride(w, 1); scan(`walking ${w.toFixed(1)}`); }
+      if (stride) stride(keep[0], keep[1]);
+      return [...found.values()];
+    }
+    const heroClips = clips();
+    if (heroClips.length) console.warn(`papercraft: the hero's cards cut into each other (${heroClips.length}): ${heroClips.slice(0, 6).map((c) => `${c.a} / ${c.b} ${c.kind} (${c.at})`).join('; ')}. Layer them apart: references/mechanisms.md section 12`);
     const buildMs = Math.round(performance.now() - T0);
-    if (buildMs > 6000) {   // say where a slow build went, where any agent reading the console sees it
+    if (buildMs > 6000 * PRINT * PRINT) {   // say where a slow build went, where any agent reading the console sees it (a big frame prints more on purpose)
       const top = [...printLog.values()].sort((a, b) => b.ms - a.ms).slice(0, 4).map((e) => `${e.at} ${e.prints}x ${Math.round(e.ms)} ms`).join('; ');
       console.warn(`papercraft: the build took ${(buildMs / 1000).toFixed(1)} s, ${printN} prints ${(printMs / 1000).toFixed(1)} s (${(printPx / 1e6).toFixed(1)} Mpx). Slowest: ${top}. __papercraft.printStats(); trims: references/three-js.md section 9`);
     }
@@ -661,8 +817,11 @@ export function createHarness({ bounds = { x0: -64, x1: 64, z0: -62, z1: 38 }, g
     // step(sec) advances a fixed clock (stops the real-time loop) and renders
     window.__papercraft = { step(sec, fps = 60) { auto = false; for (let i = 0; i < Math.round(sec * fps); i++) step(1 / fps); render(); return time; }, restart,
       resume() { last = performance.now(); auto = true; }, toggle: () => setOpen(!up), post, scene, camera, pieces: hinges.length, walk, view, target, heroPos,
+      /** steer(x, z): walk him that way (a direction on the page, any length; null stops) through the same
+       *  acceleration, turning and blockers as the keys: capture.py's route= clips steer him along waypoints. */
+      steer: (x, z) => { steering = x == null || (!x && !z) ? null : [x / Math.hypot(x, z), z / Math.hypot(x, z)]; },
       place: (x, z) => { const s = walk.surface(x, z); if (!s) return null; heroPos.set(x, s.y, z); sync(); moved = true; follow(true); focusBlend = 1; assistOff(); updateAssist(0, true); return s.y; },
-      walkPath, walkMap, look, spots, buildMs, ready: true, // ready: the build is synchronous
+      walkPath, walkMap, look, spots, buildMs, frame, clips, ready: true, // ready: the build is synchronous; frame: the output frame and its lens; clips(): the hero's cards that cut into each other
       /** Can the lens see him? rays (of 3: thigh, chest, hat) a large piece blocks from the plain view and from the
        *  sight assist's current one, and the assist's offsets (deg). Walk a route with place() and read it. */
       sight: () => ({ plain: assistBlocked(0, 0), now: assistBlocked(aYaw, aPitch), yaw: +aYaw.toFixed(1), pitch: +aPitch.toFixed(1), blockers: blockers ? blockers.length : 0 }),

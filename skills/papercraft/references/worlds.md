@@ -180,6 +180,9 @@ of the hero plus a 1.7 H lead, rope 1.7 H, M = 3.3 H):
 Then verify by counting, not by eye: at least 80 % of rise starts inside the frame, no flat module next to the hero,
 no flips while the hero jiggles in place, and the page visibly closing behind him when he walks sideways.
 
+Derive them for the frame you deliver: a 9:16 frame (the 16:9 camera turned upright, `formats.md`) has a much larger
+`aheadTop` and a smaller `halfW`, so its ring reaches further up the page and less to the sides.
+
 ## 6. Seeded chunked generation
 
 The structure below is the shipped countryside's (rivers, roads, villages, ponds). Keep the method (stateless fields

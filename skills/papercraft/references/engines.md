@@ -98,7 +98,8 @@ the silhouette line inside the blur.
 
 - Time = frame / fps; no wall clock; seeded randomness; deterministic `step()` so any frame can be re-rendered.
 - Render frames headless (browser screenshot per frame, or engine offline render), assemble with ffmpeg:
-  `ffmpeg -framerate 60 -i f_%05d.png -c:v libx264 -crf 16 -pix_fmt yuv420p out.mp4`.
+  `ffmpeg -framerate 60 -i f_%05d.png -c:v libx264 -crf 16 -pix_fmt yuv420p out.mp4` (tag it BT.709 and add
+  `+faststart` for the web: `formats.md` section 7, which also lists the sizes and safe areas per platform).
 - Sound: render paper foley offline from the event list (`renderOffline` in `assets/lib/paper-sound.js` runs in a
   browser's OfflineAudioContext), keep music as a separate stem, mix with one shared SFX gain, loudness-normalise
   (levels: `sound.md` section 9).

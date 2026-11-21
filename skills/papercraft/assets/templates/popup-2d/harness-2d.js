@@ -4,7 +4,10 @@
 // ramps, roofs) drawn through the projection, cast shadows, a tilt-shift lens baked into the prints, walking over the
 // walk field, and the capture hook. Keep it as it is; write your world in your own scene.js against the API below (the
 // bundled scene.js is the countryside worked example). URL switches: ?capture (no hint), ?walk / ?still (walking on /
-// off; walking is the default here: createHarness2D({ play: false }) turns it off), ?view=x,z,zoom (a review camera).
+// off; walking is the default here: createHarness2D({ play: false }) turns it off), ?view=x,z,zoom (a review camera),
+// ?size=1080x1920 (render exactly that many pixels, scaled to fit the window: a video or still format), ?aspect=9:16
+// (the largest frame of that shape in the window), ?ss=2 (supersampled), ?closer=1.3 (a tall frame comes closer).
+// Formats and what scales with them: references/formats.md.
 // In your own project: copy assets/lib/ and this file, keep it as it is, and map "papercraft/" in your page's import map to
 // the folder that holds lib/ (the template's index.html maps it to ../../).
 //
@@ -22,47 +25,80 @@ import { PaperSound } from 'papercraft/lib/paper-sound.js';
  * 16 / (9 x share), ~54 for a 3.2-unit hero at 8 %), light [x, y, z] toward the key, grade (a canvas filter baked into
  * prints and ground), ground (your world's plain ground colour: set it), shadow (cast-shadow colour: your world's
  * shadow hue; the default is a warm ground's umber), kraft (card backs), walk { step,
- * radius }, play (walking without ?walk).
+ * radius }, play (walking without ?walk), size [w, h] / aspect (number or 'w:h') (the output frame, as ?size /
+ * ?aspect), subject [x, z] (what a frame narrower than 16:9 swings toward: the hero's start). The view is authored for
+ * 16:9: another shape keeps the scale on its short side, a tall frame comes closer (view.closer, default 1.33 at 9:16)
+ * and lifts the focus row toward ~42 % from the top (view.subjectY, -1 bottom .. 1 top), clear of a vertical
+ * platform's captions (formats.md). The world is built for the frame the page opens with.
  * H: P2, g (the 2D context), proj(x, y, z) -> [sx, sy, k], view, L (unit light), flags, bounds of the visible ground
- * (zTop, zBot, halfAt(z)), rnd (reseed it per section: H.reseed(n)), sheet (paper), Q (print px per unit), mk(w, h),
- * printGround(draw), piece(pts, paint, opts), decks (raised surfaces), walk (WalkField), setHero(piece, { parts }),
- * start().
+ * (zTop, zBot, halfAt(z) about frame.cx: fill inside them), frame { w, h, aspect, mag, focusY, cx, half(z) }, rnd (reseed it per section:
+ * H.reseed(n)), sheet (paper), Q (print px per unit), mk(w, h), printGround(draw), piece(pts, paint, opts), decks
+ * (raised surfaces), walk (WalkField), setHero(piece, { parts }), start().
  */
 export function createHarness2D({ view = {}, light = [-0.7, 1.1, 0.4], grade = 'saturate(1.3) contrast(1.08)', ground = '#d9d2c2',
-  shadow = '#6e3010', kraft = '#c9a77c', walk: walkOpts = { step: 0.6, radius: 0.45 }, play = true } = {}) {
+  shadow = '#6e3010', kraft = '#c9a77c', walk: walkOpts = { step: 0.6, radius: 0.45 }, play = true, size = null, aspect = null, subject = null } = {}) {
   const T0 = performance.now();
   const Q_ = new URLSearchParams(location.search);
   const flags = { WALK: Q_.has('walk') || (play && !Q_.has('still')) };
   if (Q_.has('capture')) document.getElementById('hint')?.remove();
-  const VIEW = { pitch: 40, dist: 70, across: 54, focus: 0.55, band: 0.28, ramp: 0.3, maxBlur: 9, ...view };   // maxBlur: px at 1080p
+  const VIEW = { pitch: 40, dist: 70, across: 54, focus: 0.55, band: 0.28, ramp: 0.3, maxBlur: 9, ...view };   // maxBlur: px for a 1080 px short side
+  if (Q_.get('closer')) VIEW.closer = Number(Q_.get('closer'));
   // a review camera (?view=x,z,zoom or __papercraft.look(x, z, zoom)) moves the projection only: the world is built for a
   // fixed reference frame, so every camera sees the same world (prints keep the blur baked for the main view)
   const CAM = (() => { const v = (Q_.get('view') || '').split(',').map(Number); return { x: v[0] || 0, z: v[1] || 0, zoom: v[2] || 1 }; })();
   const sinP = Math.sin(VIEW.pitch * Math.PI / 180), cosP = Math.cos(VIEW.pitch * Math.PI / 180);
   const L = (() => { const n = Math.hypot(...light); return light.map((v) => v / n); })();
 
-  // ---- canvas, projection ----------------------------------------------------------------------------------------
+  // ---- the output frame, canvas, projection ------------------------------------------------------------------------
+  // ?size=WxH (or size): exactly that many pixels, scaled to fit the window; ?aspect=W:H (or aspect): the largest frame
+  // of that shape in the window; neither: the window. ?ss=2 renders at 2x for the browser to downsample.
+  const SS = Math.max(1, Number(Q_.get('ss')) || 1);
+  const pair = (s, re) => { const m = re.exec(String(s ?? '')); return m ? [Number(m[1]), Number(m[2])] : null; };
+  const SIZE = pair(Q_.get('size'), /^(\d+)x(\d+)$/i) || size;
+  const ASPECT = (() => { const p = pair(Q_.get('aspect') ?? aspect, /^([\d.]+)\s*[:x/]\s*([\d.]+)$/i); return p ? p[0] / p[1] : typeof aspect === 'number' ? aspect : null; })();
+  function frameBox() {   // drawing size in device px (w x h) and its size on screen in CSS px (cw x ch)
+    if (SIZE) { const k = Math.min(1, innerWidth / SIZE[0], innerHeight / SIZE[1]); return { w: SIZE[0] * SS, h: SIZE[1] * SS, cw: SIZE[0] * k, ch: SIZE[1] * k }; }
+    const dpr = Math.min(devicePixelRatio || 1, 2) * SS;
+    if (ASPECT) { const cw = Math.min(innerWidth, innerHeight * ASPECT), ch = cw / ASPECT; return { w: Math.round(cw * dpr), h: Math.round(ch * dpr), cw, ch }; }
+    return { w: Math.round(innerWidth * dpr), h: Math.round(innerHeight * dpr), cw: innerWidth, ch: innerHeight };
+  }
   let cv = document.getElementById('c');
   if (!cv) { cv = document.createElement('canvas'); cv.id = 'c'; document.body.prepend(cv); }
   const g = cv.getContext('2d');
+  // The world's frame (fixed for the build, so every later camera and resize sees the same world): authored for 16:9,
+  // another shape keeps the scale on its SHORT side (a 9:16 frame is the 16:9 one turned upright, brought closer by
+  // view.closer), and a narrow one swings toward the subject; a tall one lifts the focus row toward ~42 % from the top.
+  const REF = 16 / 9, REF_H = 9 / 16 * VIEW.across;     // the 16:9 frame's height in world units at z = 0
+  const B0 = frameBox(), A = B0.w / B0.h;
+  const MAG = A < 1 ? Math.min(1 / A, Math.max(1, VIEW.closer ?? 1.33) ** (Math.log(1 / A) / Math.log(REF))) : 1;
+  const FW = A >= 1 ? REF_H * A : REF_H / MAG, FH = FW / A;                         // the frame in world units at z = 0
+  const LAT = Math.min(1, A / REF) * Math.min(1, FW / VIEW.across);
+  const AX = subject ? subject[0] * (1 - LAT) : 0;                                   // the world x at the frame's middle
+  const vF = (VIEW.focus - 0.5) * REF_H;                                             // the 16:9 focus row, world units below the middle
+  const wL = Math.min(1, Math.max(0, (1 - A) / (1 - 9 / 16)));
+  const FOCUS = A >= 1 ? VIEW.focus : VIEW.subjectY != null ? 0.5 - VIEW.subjectY / 2 : (0.5 + vF / FH) + (0.42 - (0.5 + vF / FH)) * wL;
+  const BAND = VIEW.band * REF_H / FH, RAMP = VIEW.ramp * REF_H / FH;                 // the band keeps its size on the page
   let S = 1, CX = 0, CY = 0;                               // px per world unit at z = 0; screen position of the origin
   function resize() {
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr);
-    S = cv.width / VIEW.across; CX = cv.width / 2; CY = cv.height / 2;
+    const b = frameBox();
+    cv.width = b.w; cv.height = b.h;
+    Object.assign(cv.style, { position: 'absolute', width: b.cw + 'px', height: b.ch + 'px', left: (innerWidth - b.cw) / 2 + 'px', top: (innerHeight - b.ch) / 2 + 'px' });
+    S = cv.width / FW; CX = cv.width / 2 - AX * S; CY = FOCUS * cv.height - vF * S;
   }
   resize();
   const depthK = (z) => VIEW.dist / (VIEW.dist - z * cosP);                            // perspective scale at depth z
   const proj = (x, y, z) => { const k = depthK(z - CAM.z) * CAM.zoom; return [CX + (x - CAM.x) * S * k, CY + ((z - CAM.z) * sinP - y * cosP) * S * k, k]; };
-  const S0 = S, H0 = cv.height;            // prints and blurs are made once for this size; resizes just rescale them
-  const Q = Math.min(48, Math.max(16, S0 * 1.25)); // print px per unit: near the on-screen size (a big downscale rings into halos)
+  const S0 = S, H0 = cv.height, SHORT0 = Math.min(cv.width, cv.height);   // prints and blurs are made once for this size; resizes just rescale them
+  const BLUR = VIEW.maxBlur * (SHORT0 / 1080) * MAG;     // the band's full blur in px at this size
+  // print px per unit: near the on-screen size (a big downscale rings into halos); a big frame prints finer
+  const Q = Math.min(48 * Math.max(1, SHORT0 / 1080 * MAG / Math.min(SS, 2)), Math.max(16, S0 * 1.25));
   const mk = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; };
-  const blurAt = (fy) => { const d = Math.max(0, Math.abs(fy - VIEW.focus) - VIEW.band / 2); return VIEW.maxBlur * (H0 / 1080) * Math.min(1, d / VIEW.ramp); };
+  const blurAt = (fy) => { const d = Math.max(0, Math.abs(fy - FOCUS) - BAND / 2); return BLUR * Math.min(1, d / RAMP); };
   const sheet = P2.paperSheet({ size: 512, color: '#fbf4e8', seed: 9 });
-  // the visible ground of the REFERENCE frame (16:9, the main view): fixed, so the world never depends on the window
-  const REF_H = 9 / 16 * VIEW.across;      // frame height in world units at z = 0
-  const zAt = (fy) => { const v = (fy - 0.5) * REF_H; return v * VIEW.dist / (sinP * VIEW.dist + v * cosP); };
-  const zTop = zAt(0), zBot = zAt(1), halfAt = (z) => (VIEW.across / 2) / depthK(z);
+  // the visible ground of the frame the page opened with: fixed, so the world never depends on later resizes
+  const zAt = (fy) => { const v = (fy * H0 - CY) / S0; return v * VIEW.dist / (sinP * VIEW.dist + v * cosP); };
+  const zTop = zAt(0), zBot = zAt(1), halfAt = (z) => (FW / 2 + Math.abs(AX)) / depthK(z);
+  const frame = { w: B0.w, h: B0.h, aspect: A, mag: MAG, focusY: FOCUS, cx: AX, half: (z) => FW / 2 / depthK(z) };   // cx: the world x at its middle; half(z): its half-width there
 
   // ---- the printed ground: one continuous sheet, larger than the frame --------------------------------------------
   const GX0 = -Math.ceil(halfAt(zTop) + 8), GX1 = -GX0, GZ0 = Math.floor(zTop - 8), GZ1 = Math.ceil(zBot + 6), GQ = Math.min(20, Q);
@@ -109,10 +145,10 @@ export function createHarness2D({ view = {}, light = [-0.7, 1.1, 0.4], grade = '
       x.filter = 'none';
     }
     const b = mk(cv.width, cv.height), bx = b.getContext('2d');
-    bx.filter = `blur(${VIEW.maxBlur * (cv.height / 1080)}px)`; bx.drawImage(c, 0, 0); bx.filter = 'none';
+    bx.filter = `blur(${BLUR * cv.width / B0.w}px)`; bx.drawImage(c, 0, 0); bx.filter = 'none';
     bx.globalCompositeOperation = 'destination-in';
     const gr = bx.createLinearGradient(0, 0, 0, cv.height);
-    for (let i = 0; i <= 24; i++) gr.addColorStop(i / 24, `rgba(0,0,0,${blurAt(i / 24) / (VIEW.maxBlur * (H0 / 1080))})`);
+    for (let i = 0; i <= 24; i++) gr.addColorStop(i / 24, `rgba(0,0,0,${blurAt(i / 24) / BLUR})`);
     bx.fillStyle = gr; bx.fillRect(0, 0, cv.width, cv.height);
     x.drawImage(b, 0, 0);
     groundLayer = c;
@@ -169,10 +205,12 @@ export function createHarness2D({ view = {}, light = [-0.7, 1.1, 0.4], grade = '
     HERO0 = [hero.x, hero.z];
   }
   const keys = new Set();
+  let steering = null;
   function walkHero(dt) {
     let ix = 0, iz = 0;
     if (keys.has('arrowleft') || keys.has('a')) ix -= 1; if (keys.has('arrowright') || keys.has('d')) ix += 1;
     if (keys.has('arrowup') || keys.has('w')) iz -= 1; if (keys.has('arrowdown') || keys.has('s')) iz += 1;
+    if (steering) [ix, iz] = steering;                        // steer(x, z): a scripted stick (a video along a route)
     const x0 = hero.x, z0 = hero.z;
     if (ix || iz) { const k = 7 * dt / Math.hypot(ix, iz); walk.move(hero, ix * k, iz * k); if (ix) hero.face = Math.sign(ix); }
     const d = Math.hypot(hero.x - x0, hero.z - z0); hero.walked += d; hero.gait += ((d > 1e-4 ? 1 : 0) - hero.gait) * (1 - Math.exp(-dt * 10));
@@ -251,7 +289,7 @@ export function createHarness2D({ view = {}, light = [-0.7, 1.1, 0.4], grade = '
   }
 
   // ---- motion, input, loop, capture hook -------------------------------------------------------------------------------
-  const H = { P2, g, proj, view: VIEW, L, flags, zTop, zBot, zAt, halfAt, sheet, Q, mk, grade, printGround, piece, decks, walk, setHero, start,
+  const H = { P2, g, proj, view: VIEW, L, flags, zTop, zBot, zAt, halfAt, frame, sheet, Q, mk, grade, printGround, piece, decks, walk, setHero, start,
     get rnd() { return rnd; }, reseed: (n) => { rnd = P2.rng(n); return rnd; }, get hero() { return hero; } };
 
   function start() {
@@ -286,7 +324,7 @@ export function createHarness2D({ view = {}, light = [-0.7, 1.1, 0.4], grade = '
         p.spring.step(dt);
       }
     }
-    addEventListener('resize', () => { resize(); groundLayer = null; });
+    addEventListener('resize', () => { resize(); groundLayer = null; });   // the same world, rescaled to the new size
     cv.addEventListener('pointerdown', () => sound.unlock());
     addEventListener('keydown', () => sound.unlock());     // a player on the keys alone hears it too
     cv.addEventListener('pointerup', () => setOpen(!open));
@@ -303,9 +341,11 @@ export function createHarness2D({ view = {}, light = [-0.7, 1.1, 0.4], grade = '
       place(x, z) { const sf = walk.surface(x, z); if (!sf) return null; hero.x = x; hero.z = z; hero.y = sf.y; return sf.y; },
       walkPath(points, o) { const r = walk.route(hero, points, o); if (points.length) hero.face = Math.sign(points[points.length - 1][0] - r.trace[0][0]) || hero.face; hero.flip = hero.face; return { reached: r.reached, of: r.of, stuck: r.stuck || null, blockedBy: r.blockedBy || null, y: +hero.y.toFixed(2), on: r.on ? 'deck' : 'page' }; },
       look(x, z, zoom = 1.8) { CAM.x = x; CAM.z = z; CAM.zoom = zoom; groundLayer = null; },   // a close review frame (same world)
+      steer(x, z) { steering = x == null || (!x && !z) ? null : [x / Math.hypot(x, z), z / Math.hypot(x, z)]; },   // walk him that way (null stops)
+      get heroPos() { return { x: hero.x, y: hero.y, z: hero.z }; },
       /** measured frames per second of the live loop over ms (resume() first; headless machines without a GPU read low) */
       fps(ms = 2000) { const f0 = frames, t0 = performance.now(); return new Promise((res) => setTimeout(() => res(+((frames - f0) / ((performance.now() - t0) / 1000)).toFixed(1)), ms)); },
-      buildMs: Math.round(performance.now() - T0), ready: true }; // ready: the build is synchronous: wait for __papercraft?.ready
+      buildMs: Math.round(performance.now() - T0), frame, ready: true }; // ready: the build is synchronous: wait for __papercraft?.ready
   }
   return H;
 }

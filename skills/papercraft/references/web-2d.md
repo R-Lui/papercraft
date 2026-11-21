@@ -324,7 +324,11 @@ spring sampled into `linear()` easings (size 0.3; scale the duration with size: 
   each frame with `canvas.toBlob` (or a headless browser screenshot) and assemble with ffmpeg. Avoid MediaRecorder
   for final output (variable frame timing). The 2D template exposes `window.__papercraft.restart()`,
   `window.__papercraft.step(seconds)` (fixed 1/60 s steps, then one render) and `resume()` (back to the live loop);
-  `?capture` hides the hint.
+  `?capture` hides the hint. `scripts/capture.py <project> clip:video=6,30 --size reel --page <page>` does the
+  frames and the MP4 for you.
+- Another frame (a 9:16 Reel, a square post, 4K): `?size=1080x1920` or createHarness2D({ size, aspect, subject });
+  the short side keeps the scale, a tall frame comes closer and lifts the focus row clear of a platform's captions,
+  and the world is built for the frame the page opens with (`formats.md`).
 - Stop-motion only when the brief asks for it (the style moves smoothly): `motion.md` section 11 (in 2D apply its
   per-pose hinge turn and slide to each card's phi and x).
 - Sound: render the paper foley offline from the same event list (`renderOffline` in `assets/lib/paper-sound.js`),

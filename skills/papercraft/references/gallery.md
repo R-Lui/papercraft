@@ -29,8 +29,10 @@ from your brief (`palettes.md` section 3).
    - its light and shadow colour;
    - how things move.
 
-   The prompt decides WHAT is in the world. References decide HOW it looks wherever they speak. This skill decides
-   how it is BUILT (paper construction, print, lens, light quality) and fills in what neither says.
+   The prompt decides WHAT is in the world, and a concept board can add to it. References decide HOW it looks
+   wherever they speak. This skill decides how it is BUILT (paper construction, print, lens, light quality) and fills
+   in what neither says; a reference that already looks like papercraft can speak for the craft too (SKILL.md
+   section 2).
 3. **Choose the ground** from the place:
    - what the floor is (sand, snow, moss, deck plates, tiles, a map);
    - its regions and features (drifts, ripples, beds, plates);
@@ -44,7 +46,7 @@ from your brief (`palettes.md` section 3).
    chevron palm trunks, geometric saddle blankets, icicle scallops, rows of tulips.
 6. **Choose the life** (weather, flyers, creatures, smoke) from the environment and the time of day (`motion.md`
    section 12).
-7. **Derive the palette** from all of that (`palettes.md` section 3), then write the paper spec (SKILL.md section 2).
+7. **Derive the palette** from all of that (`palettes.md` section 3), then write the paper spec (SKILL.md section 3).
 
 ## 2. Pine forest: `pine-forest.jpg`, `pine-forest-close.jpg`
 

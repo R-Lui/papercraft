@@ -187,7 +187,9 @@ Pitfalls:
   icon the line is 1-2 px (6 % of the half-size). An even pale band all round reads as a sticker halo at any size.
 - **Pale on pale** (a snowflake on snow) does not read. Mount the piece on a darker backing sheet cut a little larger
   (slate blue `#5f86b4` on snow).
-- Icons need no image generation. If you generate some anyway, see `image-gen.md`.
+- Icons need no image generation. If the user asks you to generate some, see SKILL.md section 2 and `image-gen.md`.
+- On phones, size full-screen pages with `100dvh` (or `svh`), not `vh`, and keep overlays inside
+  `env(safe-area-inset-*)` (with `viewport-fit=cover`): `formats.md` section 8.
 
 ```js
 // A cut-paper icon in a [-1, 1] box (y down, light upper left): the coloured sheet, then its cut edge inside the cut:

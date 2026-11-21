@@ -42,6 +42,13 @@ sit on a printed ribbon (one connected cut: loose members are dropped, section 1
 
 - Every standing thing is something you could build with a knife, a bone folder and glue: cut, scored, folded,
   slotted or glued. If it ever folds, it folds flat without passing through anything.
+- **No card ever cuts into another, at rest or in motion.** One card passing through another renders as a cut line
+  that slides while they move, and two cards in one plane where they overlap flicker as the camera moves (z-fighting);
+  real paper can do neither. Overlapping cards sit in their own layers, their mid-planes at least about two card
+  thicknesses apart; a card that turns (a limb, a flap, a door, a sail) stays clear of everything its sweep crosses;
+  two cards may share a plane only where they do not overlap. The one deliberate intersection is a slotted cross
+  (section 5). Check any construction with `cardClips(node)` (`paperkit-3d.js`) at a few poses; the 3D harness checks
+  the hero at every start (section 12).
 - Every card is a slab (T = 1.5-3 % of H) with a hand-cut outline: `roughen` in `paperkit-2d.js` (default 0.8 % of
   the smaller side; the source wandered 0.3-1 % of the piece size), points on the fold line never move (moving them
   opens gaps at the hinge).
@@ -462,6 +469,27 @@ subject (a diver, a courier, a robot, a fox); the construction is the style:
   tones so the build reads as construction. Keep each profile card's top below its frontal card's top: a bare head's
   side card that rises past the face pokes up as an "ear" from a high camera (a hat or hair hides it). Volumes may
   also be box folds or level discs.
+- **No card cuts into another, standing or mid-stride.** A tester saw the leg and arm cards slicing back and forth
+  through the body as the hero walked and turned. Build it the way a paper doll is built:
+  - **Layers.** Parts that overlap get their own depth, front to back, mid-planes ~2 card thicknesses apart: the
+    headgear in front of the face, the face in front of the body, the legs a layer behind the hem.
+  - **Limbs beside the body.** A limb that swings about its hip or shoulder must not overlap the body's outline seen
+    from the front: put its pivot just outside it (the arm right against the jacket's edge). Hung in front or behind
+    instead, it needs a layer deeper than its sweep (the overlap's length x the sine of the swing angle, plus a
+    thickness), and then floats away from the body. Two legs never overlap each other: they scissor as they swing.
+  - **Profile cards wholly behind their front cards** (the front edge a thickness and a little air behind the front
+    card's back face), never through them; a cross is for trees, not for people.
+  - **One plane, no overlap.** Profile cards on the centre plane must not overlap each other: trim them (the torso's
+    to its depth, the head's between the collar and the hat's brim: `makeCard({ geomPts })` cuts the card, the print
+    stays) or set one a plane aside (~1.2 card thicknesses). From each side, the nearer plane shows; keep a pack's
+    side card behind the torso's in depth, so it never covers the torso from one side.
+  - **Things on the back** stand behind the body's profile cards (the pack's side card right behind the torso's, its
+    own card behind both), so nothing from the front reaches through them; **carried things** hang below or beside
+    the hand, never across the arm.
+  - **Check it**: `__papercraft.clips()` poses him standing and through two stride cycles and lists the pairs that cut
+    into each other (`a / b`, through or overlap, and the pose); the harness warns at start and `capture.py` prints
+    the result with every build. Name your cards (`mesh.name`) so the report reads. The example `heroDoll` is laid out
+    from its cards' outlines to pass it: read its layout comments.
 - **The model faces +z and yaws** (the harness turns its group toward the way it goes: `three-js.md` section 1); its
   back is printed too (hair, a plain coat back).
 - **Legs (or wheels, flippers, tracks) on hip pivots** that swing forward and back about the hip's x axis with the
@@ -480,7 +508,8 @@ subject (a diver, a courier, a robot, a fox); the construction is the style:
 - Flat cards that mirror to turn (`setHero(h, { turn: 'flip' })`) are for critters, extras and 2D only. In 2D the
   puppet is the same cards drawn at small offsets from the body card: they follow it (x offsets mirror when he turns),
   rise with its spring, step with the distance walked (`setHero(body, { parts, step })`), and parts that never touch
-  the ground cast no shadow or contact pool of their own.
+  the ground cast no shadow or contact pool of their own. Give every part its own depth offset (never two equal), so
+  the draw order never flips while he walks or turns.
 The example scene's `heroDoll` (a gardener, 17 cards) is one worked model; write your own.
 
 ## 13. Never edge-on

@@ -118,6 +118,13 @@ export function edgeColorFor(printColor, core = '#f4e6c8') {
   return lum < 0.42 ? mix(shade(printColor, -0.5), core, 0.06) : mix(shade(printColor, -0.45), core, 0.1);
 }
 
+// Print resolution for every card: pxPerUnit values are tuned for a 1080 px short side at the templates' framing; the
+// 3D harness sets this from the output frame (a 4K frame prints at 2x, references/formats.md). Pixel-sized print
+// details (blurs, minimum line widths, the fibre sheet) scale with it, so a finer print reads the same, only sharper.
+let PRINT_SCALE = 1;
+export function setPrintScale(k = 1) { PRINT_SCALE = Math.max(0.25, Number(k) || 1); }
+export function printScale() { return PRINT_SCALE; }
+
 /**
  * Build a card from a closed outline (paperkit-2d shape, y up, fold line on y = 0) and a paint function.
  * The card stands in the XY plane facing +Z. Options:
@@ -152,6 +159,7 @@ export function makeCard(pts, { paint = null, paper, thickness = 0.08, edgeWidth
   if (materials) {
     if (materials.length > 2) splitLids();
     const m = new THREE.Mesh(geo, materials); m.castShadow = m.receiveShadow = true;
+    m.userData.card = { thickness, outline: geomPts || pts };
     return m;
   }
   const r = rng(seed * 7919 + 13);
@@ -168,7 +176,7 @@ export function makeCard(pts, { paint = null, paper, thickness = 0.08, edgeWidth
     if (edgeWidth > 0) P.rim({ width: edgeWidth, color: edgeColor, skip: foldSkip(folds, P.box), light: rimLight });
   };
   const bleed = edgeColor === 'auto' ? '#d9c8a8' : edgeColor;
-  const front = printCard(pts, { pxPerUnit, sheet: paper.sheet, seed, bleed, effects, holes, paint: (P) => { if (paint) paint(P); else P.fill('#efe6d2'); finish(P); } });
+  const front = printCard(pts, { pxPerUnit, scale: PRINT_SCALE, sheet: paper.sheet, seed, bleed, effects, holes, paint: (P) => { if (paint) paint(P); else P.fill('#efe6d2'); finish(P); } });
   const avg = front.mean;
   const k = 1 + (r() * 2 - 1) * tone; // per-sheet tone: "the same colour" from slightly different sheets
   const tint = new THREE.Color().setRGB(k * (1 + (k - 1) * 0.35), k, k * (1 - (k - 1) * 0.5));
@@ -197,14 +205,14 @@ export function makeCard(pts, { paint = null, paper, thickness = 0.08, edgeWidth
     const backPaint = typeof back === 'function' ? back
       : (P) => { P.fill(mix(avg, '#e8d3ac', 0.45)); P.innerShade('#5a3a20', { alpha: 0.25, blurPx: 10 }); finish(P); };
     // the back is seen only in passing (mid-fold, at a turn): print it at backRes of the front's resolution
-    const backPrint = printCard(pts.map(([x, y]) => [-x, y]), { pxPerUnit: pxPerUnit * backRes, sheet: paper.sheet, seed: seed + 1, paint: backPaint, bleed, effects: 0, holes: holes && holes.map((h) => h.map(([x, y]) => [-x, y])) });
+    const backPrint = printCard(pts.map(([x, y]) => [-x, y]), { pxPerUnit: pxPerUnit * backRes, scale: PRINT_SCALE, sheet: paper.sheet, seed: seed + 1, paint: backPaint, bleed, effects: 0, holes: holes && holes.map((h) => h.map(([x, y]) => [-x, y])) });
     mats.push(faceMat(backPrint, true));
     splitLids();
   }
   const mesh = new THREE.Mesh(geo, mats);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.userData.card = { thickness, box: front.box, color: avg };
+  mesh.userData.card = { thickness, box: front.box, color: avg, outline: geomPts || pts };
   mesh.userData.setGlow = (v) => { if (mats[0].emissiveMap) mats[0].emissiveIntensity = v; }; // lights on / off, flicker
   return mesh;
 }
@@ -217,6 +225,72 @@ export function foldSkip(folds, box) {
   return (x0, y0, x1, y1) => folds.some((f) =>
     (f === 'bottom' && on(y0, box.y0) && on(y1, box.y0)) || (f === 'top' && on(y0, box.y1) && on(y1, box.y1)) ||
     (f === 'left' && on(x0, box.x0) && on(x1, box.x0)) || (f === 'right' && on(x0, box.x1) && on(x1, box.x1)));
+}
+
+/**
+ * cardClips(root, { tol, grid }): cards under `root` (a character, a machine, any construction) that cut into each
+ * other in the pose they are in now. A real paper model never does: one card passing through another, or two cards
+ * in one plane where they overlap, renders as a cut line that slides while they move or as flicker (z-fighting) that
+ * changes with the camera. For every pair whose outlines overlap, the points of one card (its interior and its cut
+ * edge) that lie over the other must stay clear of both slabs (thickness and angle counted); a T touching the back of
+ * its front card is fine. Returns [{ a, b, kind: 'through' | 'overlap', depth }] ('through': one passes through the
+ * other; 'overlap': closer than their thickness, i.e. coplanar), named by mesh name (or its parent's). The planes of
+ * one slotted cross are skipped. Pose the model and call it at several poses: the 3D harness's
+ * __papercraft.clips() walks the hero through his stride (references/mechanisms.md section 12).
+ */
+export function cardClips(root, { tol = 0.004, grid = 12 } = {}) {
+  root.updateMatrixWorld(true);
+  const cards = [];
+  root.traverse((o) => { if (o.isMesh && o.visible && o.userData.card && o.userData.card.outline) cards.push(o); });
+  const inPoly = (poly, x, y) => {
+    let c = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  };
+  const info = cards.map((m, i) => {
+    const { outline, thickness } = m.userData.card;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const [x, y] of outline) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    const step = Math.max(x1 - x0, y1 - y0) / grid, local = [];
+    for (let a = 0; a < grid; a++) for (let b = 0; b < grid; b++) {   // the interior
+      const x = x0 + (x1 - x0) * (a + 0.5) / grid, y = y0 + (y1 - y0) * (b + 0.5) / grid;
+      if (inPoly(outline, x, y)) local.push([x, y]);
+    }
+    for (let k = 0; k < outline.length; k++) {                     // the cut edge: where a T or a flap pokes through
+      const [ax, ay] = outline[k], [bx, by] = outline[(k + 1) % outline.length], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / step));
+      for (let s = 0; s < n; s++) local.push([ax + (bx - ax) * s / n, ay + (by - ay) * s / n]);
+    }
+    const pts = local.map(([x, y]) => new THREE.Vector3(x, y, 0).applyMatrix4(m.matrixWorld));
+    const e = m.matrixWorld.elements, sz = Math.hypot(e[8], e[9], e[10]);   // world length of one local z unit
+    return { outline, half: thickness * sz / 2, sz, n: new THREE.Vector3(e[8], e[9], e[10]).divideScalar(sz), pts, inv: m.matrixWorld.clone().invert(), box: new THREE.Box3().setFromPoints(pts),
+      slot: m.userData.card.slot, name: m.name || m.parent?.name || `card ${i}` };
+  });
+  const q = new THREE.Vector3(), out = [];
+  const test = (A, B) => {   // A's points over B's outline against B's slab, and A's own as far as it faces B
+    const lim = B.half + A.half * Math.abs(A.n.dot(B.n)) - tol;
+    let pos = false, neg = false, near = Infinity;
+    for (const p of A.pts) {
+      q.copy(p).applyMatrix4(B.inv);
+      if (!inPoly(B.outline, q.x, q.y)) continue;
+      const d = q.z * B.sz;
+      near = Math.min(near, Math.abs(d));
+      if (d > lim) pos = true; else if (d < -lim) neg = true;
+    }
+    if (pos && neg) return { kind: 'through', depth: +(near).toFixed(3) };
+    if (near < lim) return { kind: 'overlap', depth: +(lim + tol - near).toFixed(3) };
+    return null;
+  };
+  for (let i = 0; i < info.length; i++) for (let j = i + 1; j < info.length; j++) {
+    const A = info[i], B = info[j];
+    if (A.slot != null && A.slot === B.slot) continue;
+    if (!A.box.clone().expandByScalar(A.half + B.half).intersectsBox(B.box)) continue;
+    const r = test(A, B) || test(B, A);
+    if (r) out.push({ a: A.name, b: B.name, ...r });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -297,6 +371,7 @@ export function clipBelow(pts, ymax) {
  * Without its own pts or paint, the second plane is A's print cut to the half and tinted a step darker: ONE print per
  * cross (a second print of the same art doubled the cost of every tree, lamp and post).
  */
+let SLOT = 0;
 export function crossCard(pts, opts = {}) {
   opts = { back: 'mirror', halves: 'both', main: 'full', angle: 90, ...opts };   // a slotted card is printed on both faces: a kraft back reads as a brown blade
   const group = new THREE.Group();
@@ -322,6 +397,7 @@ export function crossCard(pts, opts = {}) {
     return pivot;
   });
   group.add(a, ...halves);
+  const slot = ++SLOT; a.userData.card.slot = slot; for (const h of halves) h.children[0].userData.card.slot = slot;
   const open = (opts.angle * Math.PI) / 180;
   group.userData.follow = (p) => {
     const k = Math.min(1, Math.max(0, (p - 0.12) / 0.7)), e = k * k * (3 - 2 * k);
@@ -651,7 +727,8 @@ export function fitShadow(lights, center) {
 // ---------------------------------------------------------------------------------------------------------------
 
 export const LENS_DEFAULTS = {
-  // depth of field. band / ramp = fractions of frame height; maxBlur = radius in px at 1080p
+  // depth of field. band / ramp = fractions of the height of a 16:9 frame (post.bandScale converts them for another
+  // shape); maxBlur = radius in px for a 1080 px short side
   focusBand: 0.26, ramp: 0.34, maxBlur: 14, nearGain: 1.6, farGain: 1.0, depthWeight: 0.8, taps: 40, highlightBoost: 0.35,
   // light falloff across the frame (warmer, brighter toward the key side), as a fraction at the frame edge
   falloff: 0.12, falloffTint: 0.07,
@@ -828,6 +905,9 @@ function linearColor(hex) { const c = new THREE.Color(hex); return new THREE.Vec
 /**
  * Post chain for the macro-photo look. Usage: const post = new PaperPost(renderer, scene, camera, opts);
  * every frame: post.focus.copy(worldPointThatMustBeSharp); post.render(time). Call post.setSize(w, h) on resize.
+ * Blur, lines and grain scale with the frame's short side; post.bandScale (default 1) scales band and ramp for a frame
+ * taller than 16:9 (the 3D harness sets it: tan(fov / 2) of the 16:9 frame over the frame's own), post.magnify
+ * (default 1) the blur and lines of a frame cropped closer than that.
  * Haze, vignette and shadow tint are art-directed in DISPLAY space, so the hex you choose is the colour you see.
  * Set post.view = 1 to see the circle of confusion (red = far blur, green = near blur) while tuning.
  */
@@ -893,11 +973,14 @@ export class PaperPost {
     const pr = this.renderer.getPixelRatio(), W = Math.round(w * pr), H = Math.round(h * pr);
     this.rtScene.setSize(W, H); this.rtDof.setSize(W, H);
     this.dof.uniforms.uRes.value.set(W, H);
-    this.H = H;
+    this.H = H; this.S = Math.min(W, H);   // the short side: a 9:16 frame blurs like a 16:9 one of the same width
+    // a big frame blurs over more pixels: more taps keep the blur smooth (recompiles once per size class)
+    const taps = Math.round(this.o.taps * Math.min(2.5, Math.max(1, this.S / 1080)));
+    if (this.dof.defines.TAPS !== taps) { this.dof.defines.TAPS = taps; this.dof.needsUpdate = true; }
   }
   render(time = 0) {
     const { renderer, scene, camera, o } = this;
-    const u = this.dof.uniforms, g = this.grade.uniforms, H = this.H || 1080;
+    const u = this.dof.uniforms, g = this.grade.uniforms, k = (this.S || 1080) / 1080 * (this.magnify ?? 1), bs = this.bandScale ?? 1;
     camera.updateMatrixWorld();
     const p = this.focus.clone().project(camera);
     const fz = Math.max(0.01, -this.focus.clone().applyMatrix4(camera.matrixWorldInverse).z);
@@ -906,15 +989,15 @@ export class PaperPost {
     const pitch = Math.max(0.05, Math.asin(Math.min(0.999, -fwd.y)));
     u.uKD.value = Math.min(9, 1 / (fovY * (Math.cos(pitch) / Math.sin(pitch))));
     u.uNear.value = camera.near; u.uFar.value = camera.far;
-    u.uDof.value.set(THREE.MathUtils.clamp(p.y * 0.5 + 0.5, 0.1, 0.9), fz, o.focusBand, Math.max(0.02, o.ramp));
-    u.uDof2.value.set(o.maxBlur * H / 1080, o.nearGain, o.farGain, o.depthWeight);
+    u.uDof.value.set(THREE.MathUtils.clamp(p.y * 0.5 + 0.5, 0.1, 0.9), fz, o.focusBand * bs, Math.max(0.02, o.ramp * bs));
+    u.uDof2.value.set(o.maxBlur * k, o.nearGain, o.farGain, o.depthWeight);
     g.uInvProj.value.copy(camera.projectionMatrixInverse);
     g.uProjXY.value.set(camera.projectionMatrix.elements[0], camera.projectionMatrix.elements[5]);
     g.uCamWorld.value.copy(camera.matrixWorld);
     g.uRight.value.set(1, 0, 0).applyQuaternion(camera.quaternion).setY(0).normalize();
     g.uFallR.value = fz * Math.tan(fovY / 2) * camera.aspect * 1.25; // just beyond the frame's half width at the focus
-    g.uFall.value.set(o.falloff, o.falloffTint, o.edgeLine, o.edgeLinePx * H / 1080);
-    g.uLens.value.set(o.vignette, o.grain, o.grainSize * Math.max(1, H / 1080), o.chroma * H / 1080);
+    g.uFall.value.set(o.falloff, o.falloffTint, o.edgeLine, o.edgeLinePx * k);
+    g.uLens.value.set(o.vignette, o.grain, o.grainSize * Math.max(1, k), o.chroma * k);
     g.uTime.value = time;
     renderer.setRenderTarget(this.rtScene);
     renderer.render(scene, camera);

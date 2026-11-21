@@ -17,10 +17,16 @@ const C = {
   trunk: '#74452a', wall: '#ecd4b0', roof: '#c8513b', roofB: '#9c5636', roofC: '#b5683a', window: '#ffc45a', stone: '#b7a386',
   wood: '#a8683a', hay: '#dcb055', ink: '#3a2412', cloak: '#4f6a8a', hat: '#e3b04b', door: '#3f7a70', earth: '#b98a58', turf: '#8f9c4c', meadow: '#b3aa6a',
 };
+// the leading lines (section 2 prints them): the river and the path curve diagonally through the frame and cross ONCE,
+// at a bridge. Each bends ~4 times in view (two sines, ~30 and ~45 units long): one gentle sine reads as a ruler-straight road.
+const riverX = (z) => -26.4 - z * 0.8 + Math.sin(z * 0.15) * 3 + Math.sin(z * 0.23 + 2.1) * 2.6;   // top centre -> left edge
+const pathX = (z) => 6 + z * 0.7 + Math.sin(z * 0.13 + 1) * 2.4 + Math.sin(z * 0.21 + 0.4) * 2.8;  // bottom right -> the bridge -> top left
+const HERO_AT = [pathX(3) + 0.2, 3];   // where the hero starts: the subject a frame narrower than 16:9 swings toward
 // one diorama: the hero walks anywhere the overview shows (walkArea), the camera drifts a few units with him (camBox),
-// and the fill covers every frame that walk can bring (H.inReach), so he never finds bare page
+// and the fill covers every frame that walk can bring (H.inReach), so he never finds bare page. The view is authored
+// for 16:9; ?size=1080x1920 (a Reel) or ?aspect=1:1 renders the same world in another format (references/formats.md)
 const H = createHarness({ ground: C.ground, view: { pitch: 47, dist: 66, target: [2, 1.5, -6] }, bounds: { x0: -64, x1: 64, z0: -62, z1: 38 }, play: true,
-  walkArea: { x0: -18, x1: 22, z0: -24, z1: 7 }, camBox: { x0: -1, x1: 5, z0: -8, z1: -4 } });
+  walkArea: { x0: -18, x1: 22, z0: -24, z1: 7 }, camBox: { x0: -1, x1: 5, z0: -8, z1: -4 }, subject: HERO_AT });
 const { walk, flags } = H;
 let RES = 1;   // print resolution of the fill (popup res): the ring past the overview prints a little coarser
 const popup = (pts, paint, o = {}) => H.popup(pts, paint, { res: RES, ...o });
@@ -28,10 +34,7 @@ const popup = (pts, paint, o = {}) => H.popup(pts, paint, { res: RES, ...o });
 // ---- 2. the printed ground: watercolour washes, torn-paper river, path and fields, marks gathered in drifts ---------
 // THIS WORLD'S ground, not a recipe: replace it with your world's own floor and features (deck plates, sand ripples,
 // snow drifts, tiles, a lava channel), printed with the same tools; no river unless your world has water.
-// Here the river and the path are the leading lines: both curve diagonally through the frame and cross ONCE, at a bridge.
-// Each bends ~4 times in view (two sines, ~30 and ~45 units long): one gentle sine reads as a ruler-straight road.
-const riverX = (z) => -26.4 - z * 0.8 + Math.sin(z * 0.15) * 3 + Math.sin(z * 0.23 + 2.1) * 2.6;   // top centre -> left edge
-const pathX = (z) => 6 + z * 0.7 + Math.sin(z * 0.13 + 1) * 2.4 + Math.sin(z * 0.21 + 0.4) * 2.8;  // bottom right -> the bridge -> top left
+// Here the river and the path (riverX, pathX above) are the leading lines.
 const fields = [[22, -24, 12, 8, 0.2], [21, -3, 10, 7, -0.25]];      // x, z, w, d, angle
 const POND = { x: pathX(-3) - 9.6, z: -3.4, rx: 6.2, rz: 3.4 };     // a pond by the path with a jetty: the ground stays flat
 const inPond = (x, z, k = 1) => ((x - POND.x) / (POND.rx * k)) ** 2 + ((z - POND.z) / (POND.rz * k)) ** 2 < 1;
@@ -51,7 +54,7 @@ H.printGround(({ g, ppu, X, Z, rnd, washes, torn, band, ribbon, drifts }) => {
   torn(band(riverX, (z) => 3.1 + Math.sin(z * 0.4) * 0.15), '#f2e6c6');
   torn(band(riverX, (z) => 2.55 + Math.sin(z * 0.3 + 1) * 0.2), C.river, 'rgba(250,240,220,0.35)');
   ribbon(riverX, 2.4, P2.rgba(C.riverDeep, 0.55), undefined, undefined, 0.4);
-  for (let k = 0; k < 260; k++) {
+  for (let k = 0, n = Math.round(2.6 * (H.bounds.z1 - H.bounds.z0)); k < n; k++) {   // ~2.6 ripples per unit of river: the sheet's length varies with the formats it serves
     const z = H.bounds.z0 + rnd() * (H.bounds.z1 - H.bounds.z0), x = riverX(z) + (rnd() - 0.5) * 3.8, l = (0.6 + rnd() * 1.1) * ppu, pale = k % 3 !== 0;
     g.strokeStyle = pale ? P2.rgba(C.foam, 0.85) : P2.rgba(C.riverDeep, 0.7); g.lineWidth = pale ? 0.12 * ppu : 0.09 * ppu;
     g.beginPath(); g.moveTo(X(x) - l / 2, Z(z)); g.quadraticCurveTo(X(x), Z(z) - 0.12 * ppu, X(x) + l / 2, Z(z)); g.stroke();
@@ -68,7 +71,7 @@ H.printGround(({ g, ppu, X, Z, rnd, washes, torn, band, ribbon, drifts }) => {
   // the path's edge: a slightly darker, greener fringe just outside it and fine grit inside (a bare pale strip reads
   // as an unprinted gap in the sheet)
   for (const sd of [-1, 1]) ribbon((z) => pathX(z) + sd * (1.47 + Math.sin(z * 0.5) * 0.12), 0.36, P2.rgba(P2.shade(C.turf, -0.15), 0.26), undefined, undefined, 0.15);
-  for (let k = 0; k < 2000; k++) {
+  for (let k = 0, n = Math.round(20 * (H.bounds.z1 - H.bounds.z0)); k < n; k++) {   // ~20 grit dots per unit of path
     const z = H.bounds.z0 + rnd() * (H.bounds.z1 - H.bounds.z0), x = pathX(z) + (rnd() - 0.5) * 2.2, r = (0.05 + rnd() * 0.06) * ppu;
     g.fillStyle = rnd() < 0.6 ? P2.rgba(P2.shade(C.path, -0.3), 0.55) : P2.rgba('#fff6e2', 0.7);
     g.beginPath(); g.ellipse(X(x), Z(z), r * 1.3, r, rnd() * 3, 0, 7); g.fill();
@@ -179,76 +182,118 @@ const houseColors = (roof) => ({ wall: C.wall, roof, window: C.window, door: C.d
 // and shoulder pivots that swing forward and back with the distance walked, the torso, the head (a face in front,
 // hair behind), a knitted bobble hat, a basket of greens on the back, a watering can hanging from one hand (it swings
 // with that arm, less than the free one). The model faces +z. ~0.4-0.5 of a tree's height.
+// Built like a real paper model, so no card ever cuts into another, standing or mid-stride (references/mechanisms.md
+// section 12; __papercraft.clips() checks it): overlapping cards sit in their own layers, clear of each other's
+// thickness (hat in front of the face in front of the jacket, the legs behind it); limbs hang BESIDE the body, so their
+// swing never sweeps through it; each profile card stays wholly behind its front card, and profile cards that share
+// the centre plane never overlap (the torso's ends where the basket's begins; the head's is trimmed between the collar
+// and the hat's brim; the basket's stands a plane aside where it passes the head's).
 const heroDoll = () => {
   const g = new H.THREE.Group(), body = new H.THREE.Group(); g.add(body);
   const PROFILE = -Math.PI / 2;                                       // a profile card: its +x points forward (+z)
-  const card = ([pts, paint], seed, { x = 0, y = 0, z = 0, ry = 0, parent = body, back = 'mirror' } = {}) => {
-    const m = makeCard(pts, { paint, paper: H.paper, thickness: 0.05, edgeWidth: 0.04, pxPerUnit: 64, seed, back, folds: [] });
-    m.position.set(x, y, z); m.rotation.y = ry; parent.add(m); return m;
+  const T = 0.05, GAP = 0.03, SIDE = 0.01;                            // card thickness; air between layers; beside each other
+  const card = ([pts, paint], seed, { x = 0, y = 0, z = 0, ry = 0, parent = body, back = 'mirror', name = '', cut = null } = {}) => {
+    const m = makeCard(pts, { paint, paper: H.paper, thickness: T, edgeWidth: 0.04, pxPerUnit: 64, seed, back, folds: [], geomPts: cut });
+    m.position.set(x, y, z); m.rotation.y = ry; m.name = name; parent.add(m); return m;   // named: clips() reports by name
   };
+  const ext = ([pts]) => pts.reduce((e, [x, y]) => ({ x0: Math.min(e.x0, x), x1: Math.max(e.x1, x), y0: Math.min(e.y0, y), y1: Math.max(e.y1, y) }), { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity });
+  // a profile card's z so its front edge (its outline's +x, which faces forward) stays a gap behind a front card at z0
+  const behind = (piece, z0) => z0 - T / 2 - GAP - ext(piece).x1;
+  const band = (pts, lo, hi, k = 1) => [[lo, 1], [hi, -1]].reduce((poly, [v, s]) => {   // keep lo <= y (k 0: x) <= hi
+    const out = [], ok = (p) => s * (p[k] - v) >= 0;
+    poly.forEach((a, i) => { const b = poly[(i + 1) % poly.length]; if (ok(a)) out.push(a); if (ok(a) !== ok(b)) { const t = (v - a[k]) / (b[k] - a[k]); out.push(k ? [a[0] + (b[0] - a[0]) * t, v] : [v, a[1] + (b[1] - a[1]) * t]); } });
+    return out;
+  }, pts);
   const plain = (c) => (P) => { P.gradient(P2.shade(c, 0.08), P2.shade(c, -0.1), 0.5); P.felt(); P.innerShade(P2.shade(c, -0.5), { alpha: 0.25, blurPx: 8 }); };
   const jacket = '#2f6f8a', jacketSide = '#2a6178', collar = '#efe2c4', hat = '#d9a33a', trousers = '#3c5a3a', skin = '#f1d9b8', hair = '#9a5a2a';
-  // legs: a frontal + a profile card per leg, hanging from a hip pivot
-  const legs = [-0.12, 0.12].map((x, i) => {
-    const hip = new H.THREE.Group(); hip.position.set(x, 0.95, 0); body.add(hip);
-    const front = P2.drawnPiece((gg, ink) => { gg.fillStyle = ink(trousers); D.rect(gg, -0.1, 0.18, 0.2, 0.8, 0.05); gg.fillStyle = ink('#4a2a18'); D.rect(gg, -0.12, 0, 0.24, 0.22, 0.07); }, { w: 0.3, h: 1.0, name: 'leg' });
-    const side = P2.drawnPiece((gg, ink) => { gg.fillStyle = ink(P2.shade(trousers, -0.08)); D.rect(gg, -0.1, 0.18, 0.2, 0.8, 0.05); gg.fillStyle = ink('#4a2a18'); D.rect(gg, -0.1, 0, 0.3, 0.22, 0.08); }, { w: 0.45, h: 1.0, name: 'leg side' });
-    card(front, 310 + i, { y: -0.97, parent: hip }); card(side, 320 + i, { y: -0.97, z: -0.2, ry: PROFILE, parent: hip });
-    return hip;
-  });
-  // the torso: the jacket front (collar, buttons, a pocket) crossed with its side (a seam, a side pocket); a plain back
+  // the layers, front to back: hat (z 0.16), face (0.08), jacket and arms (0), legs (-0.16); the profiles behind them
+  const Z = { hat: 0.16, face: 0.08, jacket: 0, legs: -0.16 };
+  // the torso: the jacket front (collar, buttons, a pocket) with its side (a seam, a side pocket) behind it; a plain back
   const jacketFront = P2.drawnPiece((gg, ink) => {
     gg.fillStyle = ink(jacket); D.rect(gg, -0.38, 0, 0.76, 1.28, 0.22);
     gg.fillStyle = ink(collar); D.poly(gg, [[-0.26, 1.28], [0.26, 1.28], [0.1, 1.08], [-0.1, 1.08]]);
     gg.fillStyle = ink('#245a72', 'print'); D.rect(gg, -0.3, 0.18, 0.2, 0.2, 0.04); D.rect(gg, -0.38, 0.62, 0.76, 0.04);
     gg.fillStyle = ink('#e8c25a', 'print'); D.ell(gg, 0.04, 0.95, 0.035, 0.035); D.ell(gg, 0.04, 0.75, 0.035, 0.035); D.ell(gg, 0.04, 0.45, 0.035, 0.035);
   }, { w: 0.85, h: 1.3, name: 'jacket' });
-  card(jacketFront, 301, { y: 0.78, back: plain(P2.shade(jacket, -0.06)) });
-  card(P2.drawnPiece((gg, ink) => {
+  const jacketY = 0.78, jx = ext(jacketFront), jacketTop = jacketY + jx.y1;
+  card(jacketFront, 301, { y: jacketY, z: Z.jacket, back: plain(P2.shade(jacket, -0.06)), name: 'jacket' });
+  const jacketSidePiece = P2.drawnPiece((gg, ink) => {
     gg.fillStyle = ink(jacketSide); D.rect(gg, -0.24, 0, 0.48, 1.24, 0.18);
     gg.fillStyle = ink('#1f5064', 'print'); D.rect(gg, -0.02, 0.05, 0.04, 1.1); D.rect(gg, 0.06, 0.2, 0.14, 0.16, 0.03);
-  }, { w: 0.55, h: 1.3, name: 'jacket side' }), 302, { y: 0.8, z: -0.27, ry: PROFILE });
-  // the head: a face in front (hair printed on its back), crossed with a profile (hair behind, an ear)
-  card(P2.drawnPiece((gg, ink) => {
+  }, { w: 0.55, h: 1.3, name: 'jacket side' });
+  const TORSO = 0.32;                                                 // the torso's depth: its side card trimmed to it
+  const jacketSideZ = behind(jacketSidePiece, Z.jacket), jacketBack = Z.jacket - T / 2 - GAP - TORSO;
+  card(jacketSidePiece, 302, { y: 0.8, z: jacketSideZ, ry: PROFILE, name: 'jacket side', cut: band(jacketSidePiece[0], jacketBack - jacketSideZ, 9, 0) });
+  // legs: a frontal + a profile card per leg, from hip pivots set apart (the legs never overlap each other, nor the
+  // jacket's side card) and a layer behind the jacket, deeper than the jacket's hem moves through when they swing
+  const legFront = (i) => P2.drawnPiece((gg, ink) => { gg.fillStyle = ink(trousers); D.rect(gg, -0.1, 0.18, 0.2, 0.8, 0.05); gg.fillStyle = ink('#4a2a18'); D.rect(gg, -0.12, 0, 0.24, 0.22, 0.07); }, { w: 0.3, h: 1.0, name: `leg ${i}` });
+  const legSide = (i) => P2.drawnPiece((gg, ink) => { gg.fillStyle = ink(P2.shade(trousers, -0.08)); D.rect(gg, -0.1, 0.18, 0.2, 0.8, 0.05); gg.fillStyle = ink('#4a2a18'); D.rect(gg, -0.1, 0, 0.3, 0.22, 0.08); }, { w: 0.45, h: 1.0, name: `leg ${i} side` });
+  const hipX = ext(legFront(0)).x1 + T / 2 + SIDE;                       // the inner edge clears the jacket's side card
+  const legs = [-hipX, hipX].map((x, i) => {
+    const hip = new H.THREE.Group(); hip.position.set(x, 0.95, Z.legs); body.add(hip);
+    const side = legSide(i);
+    card(legFront(i), 310 + i, { y: -0.97, parent: hip, name: `leg ${i}` });
+    card(side, 320 + i, { y: -0.97, z: behind(side, 0), ry: PROFILE, parent: hip, name: `leg ${i} side` });
+    return hip;
+  });
+  // the head: a face in front of the jacket (hair printed on its back), its profile behind it, trimmed to the band
+  // between the collar and the hat's brim so it shares the centre plane with neither the jacket's side nor the hat's
+  const face = P2.drawnPiece((gg, ink) => {
     gg.fillStyle = ink(skin); D.ell(gg, 0, 0.38, 0.36, 0.38);
     gg.fillStyle = ink(hair, 'print'); D.rect(gg, -0.3, 0.5, 0.6, 0.12, 0.06);
     gg.fillStyle = ink('#2a1608', 'print'); D.ell(gg, -0.12, 0.35, 0.04, 0.05); D.ell(gg, 0.12, 0.35, 0.04, 0.05);
     gg.fillStyle = ink('#c9845a', 'print'); for (const fx of [-0.2, -0.16, 0.16, 0.2]) D.ell(gg, fx, 0.25, 0.015, 0.015);
     gg.fillStyle = ink('#8a3a22', 'print'); D.rect(gg, -0.07, 0.17, 0.14, 0.03, 0.015);
-  }, { w: 0.8, h: 0.8, name: 'face' }), 304, { y: 1.88, back: plain(hair) });
-  card(P2.drawnPiece((gg, ink) => {
+  }, { w: 0.8, h: 0.8, name: 'face' });
+  card(face, 304, { y: 1.88, z: Z.face, back: plain(hair), name: 'face' });
+  const hatY = 2.42, headY = 1.86;
+  const headSide = P2.drawnPiece((gg, ink) => {
     gg.fillStyle = ink(P2.shade(skin, -0.04)); D.ell(gg, 0, 0.38, 0.34, 0.38);
     gg.fillStyle = ink(hair); D.ell(gg, -0.12, 0.44, 0.24, 0.32);
     gg.fillStyle = ink('#e0b896', 'print'); D.ell(gg, 0.02, 0.36, 0.06, 0.08);
     gg.fillStyle = ink('#2a1608', 'print'); D.ell(gg, 0.22, 0.35, 0.03, 0.045);
-  }, { w: 0.75, h: 0.8, name: 'head side' }), 305, { y: 1.86, z: -0.37, ry: PROFILE });
-  // the knitted bobble hat: a frontal crown crossed with a profile crown, a pompom on both
-  const hatCard = (c, seed, ry) => card(P2.drawnPiece((gg, ink) => {
+  }, { w: 0.75, h: 0.8, name: 'head side' });
+  const headSideZ = behind(headSide, Z.face), headBack = headSideZ + ext(headSide).x0;   // the back of the head (hair)
+  card(headSide, 305, { y: headY, z: headSideZ, ry: PROFILE, name: 'head side',
+    cut: band(headSide[0], jacketTop + GAP - headY, hatY - GAP - headY) });
+  // the knitted bobble hat: a frontal crown in front of the face, a profile crown behind it, a pompom on both
+  const hatPiece = (c) => P2.drawnPiece((gg, ink) => {
     gg.fillStyle = ink(c); D.rect(gg, -0.34, 0, 0.68, 0.36, 0.16);
     gg.fillStyle = ink(P2.shade(c, -0.22)); D.rect(gg, -0.35, 0, 0.7, 0.1, 0.04);
     gg.fillStyle = ink('#c8452d', 'print'); D.rect(gg, -0.34, 0.18, 0.68, 0.05);
     gg.fillStyle = ink('#f3e6c8'); D.ell(gg, 0, 0.42, 0.13, 0.12);
-  }, { w: 0.75, h: 0.6, name: 'hat' }), seed, { y: 2.42, z: ry ? -0.37 : 0.02, ry });
-  hatCard(hat, 306, 0); hatCard(P2.shade(hat, -0.06), 307, PROFILE);
-  // arms: a frontal + a profile card each, hanging from a shoulder pivot; the right hand carries the watering can
-  const arms = [-0.44, 0.44].map((x, i) => {
-    const sh = new H.THREE.Group(); sh.position.set(x, 1.98, 0); body.add(sh);
-    const art = (c) => P2.drawnPiece((gg, ink) => { gg.fillStyle = ink(c); D.rect(gg, -0.1, 0.14, 0.2, 0.66, 0.09); gg.fillStyle = ink(collar); D.rect(gg, -0.1, 0.12, 0.2, 0.09, 0.04); gg.fillStyle = ink(skin); D.ell(gg, 0, 0.08, 0.09, 0.08); }, { w: 0.26, h: 0.82, name: 'arm' });
-    card(art(jacket), 330 + i, { y: -0.8, parent: sh }); card(art(jacketSide), 340 + i, { y: -0.8, z: -0.12, ry: PROFILE, parent: sh });
+  }, { w: 0.75, h: 0.6, name: 'hat' });
+  card(hatPiece(hat), 306, { y: hatY, z: Z.hat, name: 'hat' });
+  const hatSide = hatPiece(P2.shade(hat, -0.06));
+  card(hatSide, 307, { y: hatY, z: behind(hatSide, Z.face), ry: PROFILE, name: 'hat side' });
+  // arms: a frontal + a profile card each, from shoulder pivots just outside the jacket (a swinging arm never sweeps
+  // through the body); the right hand carries the watering can, hung just below the hand
+  const armArt = (c, name) => P2.drawnPiece((gg, ink) => { gg.fillStyle = ink(c); D.rect(gg, -0.1, 0.14, 0.2, 0.66, 0.09); gg.fillStyle = ink(collar); D.rect(gg, -0.1, 0.12, 0.2, 0.09, 0.04); gg.fillStyle = ink(skin); D.ell(gg, 0, 0.08, 0.09, 0.08); }, { w: 0.3, h: 0.85, name });
+  const shoulderX = jx.x1 + ext(armArt(jacket, 'arm')).x1 + SIDE;     // right against the jacket's edge, never over it
+  const arms = [-shoulderX, shoulderX].map((x, i) => {
+    const sh = new H.THREE.Group(); sh.position.set(x, 1.98, Z.jacket); body.add(sh);
+    const side = armArt(jacketSide, `arm ${i} side`);
+    card(armArt(jacket, `arm ${i}`), 330 + i, { y: -0.8, parent: sh, name: `arm ${i}` });
+    card(side, 340 + i, { y: -0.8, z: behind(side, 0), ry: PROFILE, parent: sh, name: `arm ${i} side` });
     return sh;
   });
-  card(P2.drawnPiece((gg, ink) => {                                   // the can, in profile: spout forward, a handle on top
+  const can = P2.drawnPiece((gg, ink) => {                           // the can, in profile: spout forward, a handle on top
     gg.fillStyle = ink('#9fb0b0'); D.rect(gg, -0.2, 0, 0.4, 0.36, 0.05); D.poly(gg, [[0.16, 0.12], [0.24, 0.16], [0.48, 0.44], [0.44, 0.48]]);
     gg.fillStyle = ink('#7c8c8c'); D.rect(gg, -0.12, 0.34, 0.24, 0.12, 0.04);
     gg.fillStyle = ink('#5f6d6d', 'print'); D.rect(gg, -0.2, 0.1, 0.4, 0.03); D.rect(gg, -0.2, 0.24, 0.4, 0.03);
-  }, { w: 1.05, h: 0.55, name: 'watering can' }), 350, { y: -1.25, ry: PROFILE, parent: arms[1] });
-  // the basket on the back: a crossed box (front + side), greens poking out above the shoulders
+  }, { w: 1.05, h: 0.55, name: 'watering can' });
+  card(can, 350, { y: -0.8 - GAP - ext(can).y1, ry: PROFILE, parent: arms[1], name: 'watering can' });
+  // the basket on the back: its side card right behind the torso's (a plane aside where it passes the head's profile),
+  // its card behind both (seen from behind: the weave on its back); greens poke up at the shoulders
   const basket = (side) => P2.drawnPiece((gg, ink) => {
     gg.fillStyle = ink('#3f7a3a'); for (const [x, a] of [[-0.18, -0.3], [-0.02, 0.1], [0.14, 0.4]]) D.poly(gg, [[x - 0.05, 0.8], [x + 0.05, 0.8], [x + Math.sin(a) * 0.3 + 0.03, 1.32], [x + Math.sin(a) * 0.3 - 0.03, 1.32]]);
     gg.fillStyle = ink(side ? '#a67c40' : '#b58a4a'); D.rect(gg, side ? -0.22 : -0.32, 0, side ? 0.44 : 0.64, 0.86, 0.1);
     gg.fillStyle = ink('#8a6230', 'print'); for (let k = 0; k < 4; k++) D.rect(gg, side ? -0.22 : -0.32, 0.12 + k * 0.18, side ? 0.44 : 0.64, 0.05);
   }, { w: 0.75, h: 1.4, name: 'basket' });
-  card(basket(false), 360, { y: 1.05, z: -0.32 }); card(basket(true), 361, { y: 1.05, z: -0.56, ry: PROFILE });
+  const basketSide = basket(true), bs = ext(basketSide), basketY = 0.96, DEPTH = 0.25;   // its depth: the side card trimmed
+  const basketSideZ = jacketBack - GAP - bs.x1, basketZ = basketSideZ + bs.x1 - DEPTH - GAP - T / 2;
+  card(basketSide, 361, { x: T + SIDE, y: basketY, z: basketSideZ, ry: PROFILE, name: 'basket side', cut: band(basketSide[0], bs.x1 - DEPTH, 9, 0) });
+  card(basket(false), 360, { y: basketY, z: Math.min(basketZ, headBack - T / 2 - GAP), name: 'basket' });
   // the stride (motion.md section 8): the phase runs with the distance walked; in the stance a leg's angle is LINEAR in
   // distance, so the planted foot stays put; the swing eases forward; arms swing opposite the legs (the loaded arm
   // less); the body bobs twice per stride. Rotation only, never a scale.
@@ -359,12 +404,15 @@ function buildWorld() {
   for (const [dx, dz] of [[-3, -1], [2, 0.8], [5.5, -1.6]]) popup(...K.hay(), { x: fields[0][0] + dx, z: fields[0][1] + dz, yaw: (rnd() - 0.5) * 0.5 });
   mark(fields[0][0], fields[0][1], 7.5); mark(fields[1][0], fields[1][1], 6.5);
   // the hero, off-centre on the path (lower right third), and a bench to rest on
-  const doll = heroDoll(), hero = popup(null, null, { node: doll, height: 3.1, x: pathX(3) + 0.2, z: 3, sway: 0.2, scale: 1.25 }); H.setHero(hero, { stride: doll.userData.stride });
+  const doll = heroDoll(), hero = popup(null, null, { node: doll, height: 3.1, x: HERO_AT[0], z: HERO_AT[1], sway: 0.2, scale: 1.25 }); H.setHero(hero, { stride: doll.userData.stride });
   { const [x, z] = at(6.5, 3); popup(...K.bench(), { x, z, yaw: -0.3 }); mark(x, z, 2.2); mark(pathX(3), 3, 2.4); }
 
   // the fill: a slow noise decides woods (high), groups (middle) and clearings (low), only where the camera can see:
-  // first the overview (inFrame), then the ring past it that the walking camera can bring (inReach minus inFrame)
+  // first the overview (inFrame), then the ring past it that the walking camera can bring (inReach minus inFrame).
+  // Every cell draws from its own seed, so each frame shape (16:9, 9:16, 1:1) and each camera sees the same pieces at
+  // the same places: the frame only decides which cells are built
   rnd = P2.rng(202);
+  const cellSeed = (gx, gz, salt) => (Math.imul(Math.round(gx * 10), 73856093) ^ Math.imul(Math.round(gz * 10), 19349663) ^ Math.imul(salt, 83492791)) >>> 0;
   const ph = [rnd() * 6.28, rnd() * 6.28, rnd() * 6.28, rnd() * 6.28];
   const lush = (x, z) => 0.5 + 0.24 * Math.sin(x * 0.12 + ph[0]) * Math.sin(z * 0.14 + ph[1]) + 0.16 * Math.sin(x * 0.21 + z * 0.15 + ph[2]) + 0.1 * Math.sin(x * 0.05 - z * 0.31 + ph[3]);
   const trees = [], placed = [];
@@ -375,6 +423,7 @@ function buildWorld() {
   const [hx0, hz0] = [hero.group.position.x, hero.group.position.z];
   const corridor = (x, z) => z > hz0 - 1 && z < hz0 + 16 && Math.abs(x - hx0) < 7 + (z - hz0) * 0.35;
   const fillGroups = (see) => { for (let gz = -46; gz <= 18; gz += 3.1) for (let gx = -46; gx <= 46; gx += 3.1) {
+    rnd = P2.rng(cellSeed(gx, gz, 19));
     const x = gx + (rnd() - 0.5) * 2.6, z = gz + (rnd() - 0.5) * 2.6, l = lush(x, z);
     if (!see(x, z, 0.12, 4) || l < 0.26 || placed.some(([px, pz]) => Math.hypot(x - px, z - pz) < 3.0)) continue;
     placed.push([x, z]);
@@ -388,15 +437,21 @@ function buildWorld() {
   // small fillers between the groups (tufts, flowers, mushrooms, stones), never in the clearings: the sharp band of the
   // shipped frames is ~45-55 % open ground (measure.py barePct)
   const fillSmall = (see, z0 = -30, x0 = 40) => { for (let gz = z0; gz <= 12; gz += 2.0) for (let gx = -x0; gx <= x0; gx += 2.0) {
+    rnd = P2.rng(cellSeed(gx, gz, 69));
     const x = gx + (rnd() - 0.5) * 1.6, z = gz + (rnd() - 0.5) * 1.6, l = lush(x, z);
-    if (!see(x, z, 0.05, 1) || l < 0.3 || !free(x, z, 0.4) || placed.some(([px, pz]) => Math.hypot(x - px, z - pz) < 1.8)) continue;
+    if (!see(x, z, 0.05, 1) || l < 0.26 || !free(x, z, 0.4) || placed.some(([px, pz]) => Math.hypot(x - px, z - pz) < 1.8)) continue;
     placed.push([x, z]);
     const k = ['tuft', 'flowers', 'mushroom', 'tuft', 'rock'][Math.floor(rnd() * 5)];
     popup(...K[k](), { x, z, yaw: (rnd() - 0.5) * 0.7, scale: 0.65 + rnd() * 0.25, sway: k === 'tuft' || k === 'flowers' ? 0.6 : 0 });
   } };
   fillSmall(H.inFrame);
   // big, blurred pieces overlapping the bottom edge sell the miniature scale
-  for (const [x, z, s, kind] of [[-23, 15.5, 2.0, 'tree'], [-7, 17, 1.8, 'bush'], [27, 17.5, 2.1, 'tree'], [9, 18.5, 1.5, 'bush']]) {
+  rnd = P2.rng(303);
+  // placed across THIS frame's bottom edge (screen x -1..1), a few units nearer than the page there, so every format
+  // (a narrow 9:16 frame too) gets them
+  for (const [sx, dz, s, kind] of [[-1.05, 5.2, 2.0, 'tree'], [-0.38, 6.7, 1.8, 'bush'], [1.05, 7.2, 2.1, 'tree'], [0.3, 8.2, 1.5, 'bush']]) {
+    const p = H.groundAt(sx, -1); if (!p) continue;
+    const x = p.x, z = p.z + dz;
     if (kind === 'bush') bushStack(x, z, { scale: s, yaw: (rnd() - 0.5) * 0.4 });
     else popup(...K.tree(), { x, z, cross: true, scale: s, sway: 0.6 });
   }

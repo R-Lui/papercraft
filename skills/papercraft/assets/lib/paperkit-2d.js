@@ -433,22 +433,24 @@ function applyTooth(g, W, H, a) {
 let _onPrint = null;
 export function onPrint(fn) { _onPrint = fn; }
 
-export function printCard(pts, { pxPerUnit = 64, sheet = null, seed = 1, paint = null, maxPx = 2048, bleed = null, tooth = 0.45, effects = 1, holes = null } = {}) {
+export function printCard(pts, { pxPerUnit = 64, scale = 1, sheet = null, seed = 1, paint = null, maxPx = 2048, bleed = null, tooth = 0.45, effects = 1, holes = null } = {}) {
   const t0 = performance.now();
   // effects: 0 = layers print flat (no lip / shadow / shade / cut edge): for pieces the lens blurs anyway (far, near)
   // holes: outlines cut out of the card (a door you walk through, windows, the gaps between rungs or spokes), in shape
   // units and inside the outline; each is cut away at the end and P.rim prints its cut edge like the outline's
   const box = bbox(pts);
-  const ppu = Math.min(pxPerUnit, maxPx / Math.max(box.w, box.h));
+  // scale: print finer (a 4K frame: 2) with every pixel-sized detail (blurs, minimum widths, the fibre sheet) scaled
+  // too, so the card reads the same, only sharper
+  const ppu = Math.min(pxPerUnit * scale, maxPx * scale / Math.max(box.w, box.h));
   const W = Math.max(2, Math.ceil(box.w * ppu)), H = Math.max(2, Math.ceil(box.h * ppu));
   const c = makeCanvas(W, H), g = c.getContext('2d', { willReadFrequently: true }); // CPU raster: many small draws + one upload; far faster than a GPU canvas flushed by readbacks
   const r = rng(seed);
   g.setTransform(ppu, 0, 0, -ppu, -box.x0 * ppu, box.y1 * ppu);
-  const px = 1 / ppu;
+  const px = scale / ppu;   // one reference print pixel in shape units (details sized in px keep their size)
   const U = Math.min(box.w, box.h); // the card's own scale: mark sizes and offsets are fractions of it
   // layer effects (shadow offset, lip, cut edge) are sized in shape units: 0.1 unit (~2 px on screen at the templates'
   // framing, where the hero is ~3.6 units) times the depth multiplier, converted to print pixels
-  const depthPx = (k = 1) => Math.max(1.2, Math.min(16, 0.1 * ppu * k));
+  const depthPx = (k = 1) => Math.max(1.2 * scale, Math.min(16 * scale, 0.1 * ppu * k));
   const P = {
     g, r, box, px, pts, U,
     clip() { g.save(); tracePath(g, pts); g.clip(); },
@@ -467,7 +469,7 @@ export function printCard(pts, { pxPerUnit = 64, sheet = null, seed = 1, paint =
     innerShade(color, { dx = 0.02, dy = -0.03, blurPx = 10, alpha = 0.5 } = {}) {
       g.save();
       g.shadowColor = rgba(color, alpha);
-      g.shadowBlur = blurPx;
+      g.shadowBlur = blurPx * scale;
       g.shadowOffsetX = -dx * U * ppu; g.shadowOffsetY = dy * U * ppu;
       g.beginPath();
       g.rect(box.x0 - box.w, box.y0 - box.h, box.w * 3, box.h * 3);
@@ -674,7 +676,9 @@ export function printCard(pts, { pxPerUnit = 64, sheet = null, seed = 1, paint =
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalCompositeOperation = 'multiply';
       g.globalAlpha = strength;
-      g.fillStyle = g.createPattern(sh, 'repeat');
+      const pat = g.createPattern(sh, 'repeat');
+      if (scale !== 1 && pat.setTransform) pat.setTransform(new DOMMatrix().scale(scale));   // the fibre keeps its size on the card
+      g.fillStyle = pat;
       g.fillRect(0, 0, W, H);
       g.restore();
     },

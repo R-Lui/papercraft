@@ -14,7 +14,8 @@ Contents: 1 Setup; 2 Paper material; 3 Cards; 4 Hinges and springs; 5 Light and 
 The template `assets/templates/popup-3d/` is the reference wiring (serve over http: the modules import each other
 relatively), split in two: `harness.js` is the fixed harness, kept as it is, and `scene.js` is your world (the bundled
 one is the countryside worked example). A scene does `const H = createHarness({ bounds, ground, stock, view, testView,
-heroHeight, light, lens, walk, play, mood, moods, focus, walkArea, camBox })`, prints ITS OWN ground with `H.printGround(t => ...)` (the
+heroHeight, light, lens, walk, play, mood, moods, focus, walkArea, camBox, size, aspect, subject, rotate })` (the view
+authored for 16:9; size / aspect / subject / view.closer frame any other shape: `formats.md`), prints ITS OWN ground with `H.printGround(t => ...)` (the
 tools are techniques, not a recipe: the example's sage washes, river and path are its world's; tools: `washes`,
 `torn`, `band`, `ribbon`, `bandOf`, `line`, `drifts`, `water`), places its pieces with `H.popup(outline, print, { x,
 z, yaw, cross, node, self, parent, solid, level, holes, res, materials, ... })` (print quality follows the lens: rows
@@ -129,15 +130,19 @@ URL switches of the template (the one list): `?test` (above); `?mood=golden|dusk
 arrows; the camera follows and refits the shadow map); `?still` (the fixed overview, no walking); `?roam` (full-quality
 prints everywhere, for a moving camera); `?diag=key` (the key light alone: the cast-shadow check, `look.md` section
 8b); `?capture` hides the hint; `?ss=2` supersamples (pixel ratio x2, up to 3: review captures, as a DPR-2 screen shows
-the cut edges). The capture hook `window.__papercraft` has `restart()` (a full reset: hinges, hero, camera),
+the cut edges); `?size=1080x1920` renders exactly that frame (scaled to fit the window), `?aspect=9:16` the largest
+frame of that shape in the window, `?closer=` brings a tall frame closer, `?res=` sets the print resolution and
+`?safe=all|meta|tiktok|shorts` outlines a vertical platform's safe area (`formats.md`). The capture hook `window.__papercraft` has `restart()` (a full reset: hinges, hero, camera),
 `step(seconds)`, `resume()`, `toggle()` (fold flat / open), `walkPath(points)` (reached < of = blocked; it reports
-`blockedBy`, the height and the surface it ends on), `walkMap(...)`, `place(x, z)`, `heroPos`, `look(x, z, dist, y)`
+`blockedBy`, the height and the surface it ends on), `walkMap(...)`, `place(x, z)`, `steer(x, z)` (walk him that way, as if on a stick; null stops: scripted clips), `heroPos`, `look(x, z, dist, y)`
 (a close review frame, the lens focused there; `look(heroPos.x, heroPos.z, 13)` frames the hero), `cards()` (the
 standing cards in frame: the density check), `printStats(n)` (what the build spent printing, by the scene line that
 asked: section 9), `sight()` (the rays to the hero a construction blocks, and the sight assist's offsets: `motion.md`
-section 10), `spots`, `buildMs`, `ready`, and `post`, `scene`, `camera`, `walk`, `view`, `target`, `pieces` for
-inspection. `scripts/capture.py <project> [shots]` drives all of it headless (overview, midrise, test, key,
-mood=, look=, spot=, walk=, at=, hold=) and prints the build, the slowest prints and every page error.
+section 10), `clips()` (the hero's card pairs that cut into each other, standing and through his stride:
+`mechanisms.md` section 12), `spots`, `buildMs`, `frame` (the output frame and its lens: `H.frame`), `ready`, and `post`, `scene`,
+`camera`, `walk`, `view`, `target`, `pieces` for inspection. `scripts/capture.py <project> [shots] --size <format>`
+drives all of it headless (overview, midrise, test, key, mood=, look=, spot=, walk=, at=, hold=, video=, route=) and prints the
+build, the frame, the slowest prints and every page error.
 
 Units: the defaults assume 1 unit = 1 cm with a ~4 cm hero (the template's is 3.6). If your world uses other units,
 scale `thickness`, `edgeWidth`, `contact.height` (makeCard), `softness`-related `maxPenumbra` (enableSoftShadows),

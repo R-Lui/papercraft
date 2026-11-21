@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """measure.py - paper-look metrics for a render, a still or a video frame (numpy + Pillow only).
 
-Every image is resized to a working width (default 1600 px; the gates assume it) and measured for:
+Every image is resized to a working width (default 1600 px; the gates assume it; a frame of another shape so its
+short side matches a 1600 px 16:9 frame's, 900 px) and measured for:
 
   tone     luma p5 / p50 / p95 / mean (Rec.709 luma of the sRGB values), clipped pixels %, mean HSV saturation,
            CIELAB chroma mean and p95, % of strongly saturated green ("video-game grass")
@@ -10,7 +11,7 @@ Every image is resized to a working width (default 1600 px; the gates assume it)
            minus right third), luma left/right, corner/centre luma (vignette or a dark surround)
   lens     blur per horizontal band in px, estimated at edges from the ratio of fine- to coarse-scale gradient
            (independent of edge contrast), plus edge energy per band (p99.5 Sobel); centre and height of the sharp
-           band (half-max), sharp/top and sharp/bottom ratios, tiltShift = the larger of the two, peakBlur (blur
+           band (half-max; the height against the frame's width when it is taller than wide), sharp/top and sharp/bottom ratios, tiltShift = the larger of the two, peakBlur (blur
            of the sharpest band), dofSpread = blur of the softest vs the sharpest tiles of an 8x6 grid (orientation
            free, so it also works for close-ups whose blur follows depth rather than screen height)
   paper    toothRms: RMS of band-passed luma (Gaussian sigma 1 minus sigma 4) on flat areas of the sharp band;
@@ -210,11 +211,14 @@ def to_rgb(im):
 
 
 def prepare(im, width):
+    """Resize to the working size: a 16:9 frame to `width` px wide; any other shape so its SHORT side matches a 16:9
+    frame's (width x 9 / 16), so blur, tooth and edges read the same in every format (a 9:16 frame: 900 x 1600)."""
     im = to_rgb(im)
     w0, h0 = im.size
-    h = max(1, round(h0 * width / w0))
-    if (w0, h0) != (width, h):
-        im = im.resize((width, h), Image.LANCZOS)
+    k = width * 9 / 16 / min(w0, h0)
+    w, h = max(1, round(w0 * k)), max(1, round(h0 * k))
+    if (w0, h0) != (w, h):
+        im = im.resize((w, h), Image.LANCZOS)
     return np.asarray(im, dtype=np.float32) / 255.0, (w0, h0)
 
 
@@ -547,7 +551,8 @@ def lens(L, g, bands, grid=(8, 6), s1=1.0, s2=4.0):
     w = np.array([s[i] for i in range(lo, hi + 1)])
     centre = float(((np.arange(lo, hi + 1) + 0.5) * w).sum() / w.sum()) / bands
     st, sb = s[pk_i] / s[have[0]], s[pk_i] / s[have[-1]]
-    out.update(focusCentre=round(centre, 3), focusHeight=round((bot - top) / bands, 3),
+    tall = L.shape[0] / min(L.shape)   # a frame taller than wide: the band's height against its width, as in 16:9
+    out.update(focusCentre=round(centre, 3), focusHeight=round((bot - top) / bands * tall, 3),
                focusRows=[round(max(top, 0) / bands, 3), round(min(bot, bands) / bands, 3)],
                sharpTop=round(st, 2), sharpBottom=round(sb, 2), tiltShift=round(max(st, sb), 2),
                peakBlur=round(blur[pk_i], 2))

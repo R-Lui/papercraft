@@ -15,7 +15,10 @@ const C = {
   wall: '#f0e0c0', roof: ['#c8513b', '#9c5636'], window: '#ffc45a', wood: '#a8683a', ink: '#3a2412', hat: '#e3b04b',
   shadow: '#6e3010', kraft: '#c9a77c',
 };
-const H = createHarness2D({ ground: C.ground, shadow: C.shadow, kraft: C.kraft, view: { pitch: 40, dist: 70, across: 54 }, light: [-0.7, 1.1, 0.4], play: true });
+// the hero starts on the path (pathX below): the subject a frame narrower than 16:9 swings toward. The view is
+// authored for 16:9; ?size=1080x1920 (a Reel) or ?aspect=1:1 builds the same world for another format (formats.md)
+const HERO_AT = [-7 + 4 * 0.3 + Math.sin(4 * 0.2 + 1) * 3 + 0.2, 4];
+const H = createHarness2D({ ground: C.ground, shadow: C.shadow, kraft: C.kraft, view: { pitch: 40, dist: 70, across: 54 }, light: [-0.7, 1.1, 0.4], play: true, subject: HERO_AT });
 const { g, proj, L } = H, D = P2.draw2;
 
 // ---- 2. the printed ground: washes, a river, a winding path, marks in drifts ------------------------------------------
@@ -126,7 +129,7 @@ const hero = place(P2.drawnPiece((gg, ink) => {
   gg.fillStyle = ink('#2a1608', 'print'); D.ell(gg, -0.12, 2.27, 0.04, 0.05); D.ell(gg, 0.12, 2.27, 0.04, 0.05); // eyes
   gg.fillStyle = ink('#c9845a', 'print'); for (const fx of [-0.2, -0.16, 0.16, 0.2]) D.ell(gg, fx, 2.17, 0.015, 0.015); // freckles
   gg.fillStyle = ink('#8a3a22', 'print'); D.rect(gg, -0.07, 2.09, 0.14, 0.03, 0.015);                             // mouth
-}, { w: 1.2, h: 2.8, name: 'hero body' }), pathX(4) + 0.2, 4, { sway: 0.2, sharp: true });
+}, { w: 1.2, h: 2.8, name: 'hero body' }), HERO_AT[0], HERO_AT[1], { sway: 0.2, sharp: true });
 const leg = () => P2.drawnPiece((gg, ink) => { gg.fillStyle = ink('#3c5a3a'); D.rect(gg, -0.1, 0.18, 0.2, 0.66, 0.05); gg.fillStyle = ink('#4a2a18'); D.rect(gg, -0.12, 0, 0.28, 0.22, 0.08); }, { w: 0.4, h: 0.86, name: 'leg' });
 const parts = [   // [cut + print, dx, dy, dz, float, leg]
   [leg(), -0.12, 0, -0.02, true, 0], [leg(), 0.12, 0, -0.03, true, 1],
@@ -148,7 +151,11 @@ const lush = (x, z) => 0.5 + 0.25 * Math.sin(x * 0.13 + ph[0]) * Math.sin(z * 0.
 const DRESS = ['bush', 'bush', 'shrub', 'rock', 'tuft', 'flowers', 'mushroom', 'fox', 'cat'];
 const CAP = { fox: 2, cat: 2, mushroom: 4 }, used = {};   // at most a few identical pieces in view: clones read as a demo
 const trees = [], spots = [];
-for (let gz = H.zTop - 6; gz <= H.zBot + 5; gz += 3.4) for (let gx = -(H.halfAt(gz) + 3); gx <= H.halfAt(gz) + 3; gx += 3.4) {
+// cells on a fixed lattice, each with its own seed: every format (16:9, 9:16, 1:1) builds the same pieces at the same
+// places, the frame only decides which cells are built
+const cellSeed = (gx, gz) => (Math.imul(Math.round(gx * 10), 73856093) ^ Math.imul(Math.round(gz * 10), 19349663) ^ 41) >>> 0;
+for (let gz = Math.floor((H.zTop - 6) / 3.4) * 3.4; gz <= H.zBot + 5; gz += 3.4) for (let gx = Math.floor(-(H.halfAt(gz) + 3) / 3.4) * 3.4; gx <= H.halfAt(gz) + 3; gx += 3.4) {
+  rnd = P2.rng(cellSeed(gx, gz));
   const x = gx + (rnd() - 0.5) * 2.6, z = gz + (rnd() - 0.5) * 2.6, l = lush(x, z);
   if (l < 0.27 || spots.some(([a, b]) => Math.hypot(x - a, z - b) < 3.1)) continue;
   spots.push([x, z]);
@@ -162,8 +169,13 @@ for (let gz = H.zTop - 6; gz <= H.zBot + 5; gz += 3.4) for (let gx = -(H.halfAt(
     used[k] = (used[k] || 0) + 1;
     if (k === 'bush') bushStack(px, pz); else place(k, px, pz, { yaw: turn(), sway: ['shrub', 'tuft', 'flowers'].includes(k) ? 0.5 : 0 }); });
 }
+rnd = P2.rng(232);
 // big blurred pieces overlapping the bottom edge sell the miniature scale
-for (const [x, dz, kind] of [[-24, 3, 'tree'], [-9, 4.5, 'bush'], [13, 4, 'bush'], [26, 3.5, 'tree']]) kind === 'bush' ? bushStack(x, H.zBot + dz, 1.5) : place('tree', x, H.zBot + dz, { sway: 0.6, slotted: true });
+// across THIS frame's width (fractions of its half-width about frame.cx), so a narrow 9:16 frame gets them too
+for (const [f, dz, kind] of [[-0.89, 3, 'tree'], [-0.33, 4.5, 'bush'], [0.48, 4, 'bush'], [0.96, 3.5, 'tree']]) {
+  const z = H.zBot + dz, x = H.frame.cx + f * H.frame.half(z);
+  if (kind === 'bush') bushStack(x, z, 1.5); else place('tree', x, z, { sway: 0.6, slotted: true });
+}
 
 // ---- 6. the walk field reads the same constructions the camera sees: the deck, the water, walls, solid footprints -----
 const walk = H.walk;

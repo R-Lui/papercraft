@@ -478,6 +478,9 @@ lens eases from the overview's `focus` to him over ~0.6 s.
 
 ## 11. Animation and video (non-interactive)
 
+Frame size, aspect (a 9:16 Reel, a square post, 4K), safe areas and the MP4 every platform takes: `formats.md`;
+`scripts/capture.py <project> clip:video=6,30 --size reel` steps the fixed clock, saves each frame and encodes.
+
 **Timing in frames.** Either key the tables in section 3 directly, or run the same simulation with `dt = 1/fps` per
 rendered frame (never wall time) and `settle()` for stills. Both templates expose `window.__papercraft` with `step`,
 `restart`, `resume`, `toggle` and `ready` for exactly this (`resume()` hands back to the real-time loop; `place`,
