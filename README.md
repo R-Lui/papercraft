@@ -1,0 +1,62 @@
+# papercraft
+
+An agent skill for building games, interactive scenes, web pages, animations and videos in one
+handcrafted **pop-up papercraft style**, for any subject: printed cardstock pieces with thin cut edges that fold up on
+hinges from a printed ground, warm soft layered shadows, a tilt-shift macro lens looking down into the world, calm
+hinge motion and soft paper sounds.
+
+It teaches the method and carries the hard-won numbers from a shipped three.js pop-up game: what makes a frame read as
+a photographed paper model (matte paper, every print a small layered paper collage with contrasting accents, a thin
+dark cut edge with a pale highlight on the lit side, soft shadows tinted by the world, a dense world of chunky pieces,
+a tilt-shift macro lens), how to construct any piece and anything walked on (crosses, box folds, layered flats, open
+bridges, decks on posts and stairs on stringers), how paper moves and sounds, and a measure-and-critique loop. The
+agent designs and writes its own subject's pieces; the bundled code is plumbing (paper, cards, the layered print,
+hinges, light, lens, walk logic) plus worked examples from one countryside world. Image generation is optional:
+everything can be made in code.
+
+## Install
+
+```bash
+npx skills add xikhar/papercraft
+```
+
+Or copy `skills/papercraft/` into your agent's skills folder. Works with any agent that supports
+[Agent Skills](https://agentskills.io) (Claude Code, Codex, Cursor, Gemini CLI, OpenCode, ...). Then just ask for
+something paper:
+
+- "make our bakery landing page feel like a pop-up storybook"
+- "a small three.js scene of a harbour town that folds up out of the ground"
+- "a dome on Mars as a paper diorama, with a rover that pops up"
+- "a 20-second paper diorama animation of a city waking up, rendered to mp4"
+
+## What is inside
+
+```
+skills/papercraft/
+|-- SKILL.md                 the material model, the paper spec, routing, workflow, checks
+|-- references/              loaded on demand: look, palettes, mechanisms, motion, worlds, procedural art,
+|                            image-gen (optional), sound, paper UI, three.js, 2D web, engines, process
+|-- assets/
+|   |-- lib/                 the plumbing, import as is:
+|   |                        paperkit-2d.js (paper sheets, cut outlines, the layered print, drawing-to-cut, 2D decks)
+|   |                        paperkit-3d.js (paper material, cards with thickness, hinges, crosses, box folds,
+|   |                        platforms, PCSS soft shadows, macro lens)
+|   |                        paper-motion.js (latched paper spring, wind sway, fixed clock, walk field)
+|   |                        paper-sound.js (procedural paper foley, offline render)
+|   |-- examples/            worked examples to read, not parts to assemble: countryside.js (one world's pieces and
+|   |                        prints), built-ground.js (a bridge, stairs on stringers, a ramp, a masonry terrace, a
+|   |                        cottage)
+|   |-- templates/           popup-3d (three.js), popup-2d (Canvas 2D): the harness, with an example scene to replace
+|   `-- palettes.json        mood palettes with colour roles
+`-- scripts/                 measure.py (look metrics), ab_sheet.py (blind A/B sheets), paper_textures.py
+```
+
+The templates are a fixed harness with a replaceable look: serve `skills/papercraft/assets/` over http
+(`npx serve skills/papercraft/assets` or `python -m http.server -d skills/papercraft/assets 8000`) and open
+`/templates/popup-3d/` or `/templates/popup-2d/`. Both walk the hero with WASD / arrows (`?still` for the fixed
+overview). In your own project, copy `assets/lib/` and the template's harness (`harness.js` for 3D, `harness-2d.js`
+for 2D), write your own `scene.js`, and point `"papercraft/"` in the page's import map at the folder that holds `lib/`.
+
+## License
+
+MIT
