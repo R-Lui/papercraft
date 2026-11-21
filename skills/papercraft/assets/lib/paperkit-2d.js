@@ -306,7 +306,7 @@ export function neutralTooth(size = 256, seed = 17) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// applique: the shipped prints are small collages of cut, felt-like paper. Every part (a leaf, a limb, a pine tier, a
+// applique: a print is a small collage of cut paper with one quiet fibre. Every part (a leaf, a limb, a pine tier, a
 // window, a wing, a band of a bush) is its own layer laid over the one below: a short soft warm shadow on what lies
 // under it (away from the light), its fill with a little mottle of its own, a thin pale lip on the edges that face
 // the light, a soft darker band on the edges away from it, and on big layers an even pale cut edge (the paper core).
@@ -394,7 +394,47 @@ function colorOf(s) {
   const m = s.match(/[\d.]+/g); return m ? toHex(m.slice(0, 3).map(Number)) : '#8a7a60';
 }
 
+// The tooth in soft-light, computed here rather than by the canvas: a CPU canvas blends soft-light per pixel in
+// floats (~70 ns a pixel: about a sixth of a whole build); the same W3C formula through a lookup table is ~10x faster
+// and equal to within one level.
+let _toothA = null; const _softLUT = new Map();
+function softLightLUT(a) {          // [cs << 8 | cb] -> the opaque result of soft-light at alpha a, 8-bit
+  let L = _softLUT.get(a); if (L) return L;
+  L = new Uint8Array(65536);
+  for (let s = 0; s < 256; s++) for (let b = 0; b < 256; b++) L[(s << 8) | b] = Math.round(255 * (a * softLight(b / 255, s / 255) + (1 - a) * (b / 255)));
+  _softLUT.set(a, L); return L;
+}
+function softLight(cb, cs) {
+  if (cs <= 0.5) return cb - (1 - 2 * cs) * cb * (1 - cb);
+  const d = cb <= 0.25 ? ((16 * cb - 12) * cb + 4) * cb : Math.sqrt(cb);
+  return cb + (2 * cs - 1) * (d - cb);
+}
+function applyTooth(g, W, H, a) {
+  const tc = neutralTooth(), S = tc.width;
+  if (!_toothA) { const d = tc.getContext('2d').getImageData(0, 0, S, S).data; _toothA = new Uint8Array(S * S); for (let i = 0; i < S * S; i++) _toothA[i] = d[i * 4]; }
+  const T = _toothA, L = softLightLUT(a), A = Math.round(a * 255), pow2 = (S & (S - 1)) === 0, mk = S - 1;
+  const img = g.getImageData(0, 0, W, H), d = img.data;
+  for (let y = 0, p = 0; y < H; y++) {
+    const row = (pow2 ? y & mk : y % S) * S;
+    for (let x = 0; x < W; x++, p += 4) {
+      const al = d[p + 3], cs = T[row + (pow2 ? x & mk : x % S)];
+      if (al === 255) { const o = cs << 8; d[p] = L[o | d[p]]; d[p + 1] = L[o | d[p + 1]]; d[p + 2] = L[o | d[p + 2]]; continue; }
+      if (al === 0) { d[p] = d[p + 1] = d[p + 2] = cs; d[p + 3] = A; continue; }
+      // a part-covered edge pixel: the general separable blend, then source-over (W3C compositing)
+      const ab = al / 255, ao = a + ab * (1 - a), s = cs / 255;
+      for (let c = 0; c < 3; c++) { const b = d[p + c] / 255, bl = (1 - ab) * s + ab * softLight(b, s); d[p + c] = Math.round(255 * (a * bl + ab * b * (1 - a)) / ao); }
+      d[p + 3] = Math.round(255 * ao);
+    }
+  }
+  g.putImageData(img, 0, 0);
+}
+
+/** onPrint(fn): fn(ms, widthPx, heightPx) after every print (the 3D harness's printStats() uses it). */
+let _onPrint = null;
+export function onPrint(fn) { _onPrint = fn; }
+
 export function printCard(pts, { pxPerUnit = 64, sheet = null, seed = 1, paint = null, maxPx = 2048, bleed = null, tooth = 0.45, effects = 1, holes = null } = {}) {
+  const t0 = performance.now();
   // effects: 0 = layers print flat (no lip / shadow / shade / cut edge): for pieces the lens blurs anyway (far, near)
   // holes: outlines cut out of the card (a door you walk through, windows, the gaps between rungs or spokes), in shape
   // units and inside the outline; each is cut away at the end and P.rim prints its cut edge like the outline's
@@ -644,10 +684,7 @@ export function printCard(pts, { pxPerUnit = 64, sheet = null, seed = 1, paint =
   if (paint) paint(P); else P.fill('#efe6d2');
   P.unclip();
   P.paper(sheet, 1);
-  if (tooth > 0) { // multiply barely marks dark ink: add a neutral (mean grey) tooth in soft-light so dark card keeps its paper
-    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'soft-light'; g.globalAlpha = tooth;
-    g.fillStyle = g.createPattern(neutralTooth(), 'repeat'); g.fillRect(0, 0, W, H); g.restore();
-  }
+  if (tooth > 0) applyTooth(g, W, H, Math.min(1, tooth)); // multiply barely marks dark ink: a neutral (mean grey) tooth in soft-light keeps dark card papery
   g.save();
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.globalCompositeOperation = 'destination-in';
@@ -666,6 +703,7 @@ export function printCard(pts, { pxPerUnit = 64, sheet = null, seed = 1, paint =
   const mean = sa > 0 ? toHex([sr / sa, sg / sa, sb / sa]) : '#cbb89a';
   // bleed: for cards cut by GEOMETRY, fill outside the cut with a colour so mipmaps never pull in transparent black
   if (bleed) { g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'destination-over'; g.fillStyle = bleed; g.fillRect(0, 0, W, H); g.restore(); }
+  if (_onPrint) _onPrint(performance.now() - t0, W, H);
   return { canvas: c, box, pxPerUnit: ppu, mean, glow: P.glowCanvas || null };
 }
 
@@ -740,7 +778,7 @@ export function tierTips(pts, box, n = 140) {
   return out;
 }
 
-/** Folk-art motifs printed on foliage (bushes, hedges, coral, flower beds), in shape units: a sprig (stem with
+/** One world's folk motifs (the countryside example's), an example set: write your subject's own. In shape units: a sprig (stem with
  *  paired leaves), a berry cluster, a five-petal flower with a dotted centre. Sizes are absolute (pass U fractions). */
 export const motif = {
   sprig(g, x, y, len, ang, color, r) {
@@ -771,8 +809,8 @@ export const motif = {
 };
 
 /** Scalloped shingle tiles over a region (roofs, towers, awnings, fish, dragons): rows laid from the eave up, each row
- *  ONE cut layer whose scalloped lower edge overlaps the row below with a pale cut edge and a short shadow (the shipped
- *  roof); three tones mixed in every row. */
+ *  ONE cut layer whose scalloped lower edge overlaps the row below with a pale cut edge and a short shadow; three tones
+ *  mixed in every row. */
 export function scallopTiles(P, region, { color, rows = 5 } = {}) {
   const { r } = P, rh = (region.y1 - region.y0) / rows, n = Math.max(3, Math.round((region.x1 - region.x0) / (rh * 1.3)));
   const tw = (region.x1 - region.x0) / n, tones = [color, shade(color, -0.14), shade(color, 0.1)], rad = tw / 2;
@@ -874,8 +912,9 @@ export function drawnPiece(draw, { w = 2, h = 2, res = 80, simplify = 0.8, finis
 
 /**
  * A smooth route through control points [[x, z], ...] (Catmull-Rom), for paths, rivers, roads, rails and walls that
- * run in ANY direction (x = f(z) helpers cannot turn back or cross the frame). Returns { pts, dist(x, z) }: draw the
- * ribbon through pts (lineTo, round caps) and use dist() to keep pieces off it (one spec drives print and placement).
+ * run in ANY direction (x = f(z) helpers cannot turn back or cross the frame). Returns { pts, dist(x, z) }: print it
+ * through pts as torn paper (a pale fibrous fringe, both edges jittered, never a smooth stroke: references/structures.md
+ * section 6) and use dist() to keep pieces off it (one spec drives print and placement).
  */
 export function pathLine(ctrl, { step = 0.5 } = {}) {
   const P = [];

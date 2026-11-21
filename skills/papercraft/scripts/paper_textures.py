@@ -38,7 +38,7 @@ Examples:
   python -I paper_textures.py --preset cardstock --out tex
   python -I paper_textures.py --preset kraft --size 2048 --seed 3 --directx --out tex --name kraft_ue
   python -I paper_textures.py --preset washi --edge deckle --rgba --preview --out tex
-  python -I paper_textures.py --preset cardstock --color "#8E9A5B" --texel-px 0.4 --out tex   # minified 2.5x
+  python -I paper_textures.py --preset cardstock --color "#RRGGBB" --texel-px 0.4 --out tex   # minified 2.5x
   python -I paper_textures.py --preset watercolour --maps albedo,normal,roughness --crumple 0.3 --out tex
 
 Engine notes: Godot, Unity and Blender read OpenGL normals (default); Unreal and 3ds Max read DirectX (--directx).

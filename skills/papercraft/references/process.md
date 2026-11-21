@@ -59,36 +59,35 @@ SKILL.md (10) -> fix the top three (5). Skip the blind A/B round; say in your re
 
 ## 1. Write the style card first
 
+First read the prompt and every reference the user gave the way `references/gallery.md` section 1 does, and look at
+the gallery world closest to the brief and one far from it: the quality bar and the range, never content.
+
 One page, written before any content code. Every agent prompt and every critic gets it. The style card is the paper
-spec of `SKILL.md` (section 2), filled in with numbers, plus four lines: the medium, the ground (a rule no subject
-changes), the owner's locked decisions and the review set. Keep one card, not two:
+spec of `SKILL.md` (section 2), filled in with numbers, plus three lines: the medium, the owner's locked decisions and
+the review set (the spec's GROUND line names this world's floor; the flat page and open built ground are
+`SKILL.md` laws 8-9). Keep one card, not two:
 
 ```
 MEDIUM      <game | animation | interactive scene | web UI | video>, <aspect, frame size, length>
-GROUND      (a world) flat; height from nested hill cards (3-5 tall curved sails stepped ~10-15 % in value) and rock
-            outcrops (tall slanted two-tone cards in clusters), never a raised block of terrain with strata on its
-            face. Everything walked on, under or into is built OPEN and read by the walk logic: a deck on posts (a
-            posts face with gaps cut to the base), stairs as thin plank treads on two stepped stringers (rise <= ~1/8
-            of the hero), a plank deck between two side cards. A solid block with a printed face only for masonry
-            the brief names (a quay wall, a stage)                              see references/mechanisms.md
 LOCKED      <owner decisions, verbatim, dated>
 REVIEW SET  <named shots: hero, close-up, wide, mid-motion, night ...> at <seed>, <camera>, <size>
 ```
 
-Starting values for the spec, for any subject (the subject changes the palette, silhouettes and motifs, never these):
-- Light: one warm key 45-65 deg off the camera axis and 45-55 deg up; a frontal fill from the camera side at ~0.3 of
-  the key, warm by day, blue only at night; soft, short shadows coloured by the world (warm amber on warm ground by
-  day, lilac-blue on snow, teal under water, navy at night), never grey or black; lit panes and warm lamp pools at
-  dusk and night.
+Starting values for the spec, for any subject (it changes the palette, light preset, silhouettes, motifs and layout):
+- Light: from the brief's preset in `assets/lights.json` (`references/palettes.md` section 4): key 45-65 deg off the
+  camera axis and 45-55 deg up (20-35 at golden hour and dusk), a frontal fill from the camera side at ~0.3 of the
+  key in the preset's colour; soft, short shadows coloured by the world (warm amber on warm ground by day,
+  lilac-blue on snow, teal under water, navy at night), never grey or black; lit panes and warm lamp pools at dusk
+  and night.
 - Lens: long lens (fov 24-32) looking down 40-55 deg, the printed ground past every edge (no sky, horizon, table or
   book edge), the sharp band ~36-45 % of the frame height on the hero's scene, big heavily blurred cards along the
   bottom edge, the hero 6-10 % of the frame height and off-centre. UI and print: flat, no lens.
 - Palette: 4-7 hexes with roles and an area budget; a lead family with 1-2 contrasting accents on every piece; the
-  ground ~0.16-0.22 brighter and ~0.16-0.25 less saturated than the cards; frame saturation 0.55-0.75; a constant or
-  two that keep it one world (the countryside's: red-brown wood, warm windows). `references/palettes.md`.
-- Layout: a leading line, landmarks, 100-250 pieces of ~20 kinds in groups of 4-8 different pieces, at most ~3
-  identical props in view; the sharp band packed, the open ground on paths, water and a few clearings.
-  `references/worlds.md`.
+  ground ~0.16-0.22 brighter and ~0.16-0.25 less saturated than the cards; saturation as rich as the world (~0.55-0.75
+  in a colourful brief, far lower for snow, mist or fog); a constant or two that keep it one world (the
+  countryside's: red-brown wood, warm windows). `references/palettes.md`.
+- Layout: the world's own leading line, landmarks, groups and clearings, water only if the brief has it; density and
+  grouping as in section 4 (Composition). `references/worlds.md`.
 - Motion: hinges only (rotate, overshoot 8-15 %, settle 0.6-1.1 s, a small quiver); a calm camera.
   `references/motion.md`. Sound: quiet, sparse, low-passed, one sound per gesture; soft low music or none.
   `references/sound.md`.
@@ -101,7 +100,8 @@ of scope, because critics will ask for it.
 
 ## 2. Pick ONE target and measure it
 
-One concrete target beats a mood board. In order of preference:
+One concrete target beats a mood board; the gallery (`references/gallery.md`) is the quality bar, never a content
+target. In order of preference:
 1. An image the owner picks or supplies.
 2. An image generated from the build's own screenshots ("this world, in this exact visual language, but better").
    It stays reachable. Idealised targets generated from words alone could not be matched: blind critics picked the
@@ -120,8 +120,8 @@ Then:
 - Run a **gaps pass**, the most actionable measurement of the project. Shoot your build at the target's pose. Make
   equal-height target|build crops per object class (your subject's classes; in the countryside: house, tree, ground,
   path, water, hero, edges). Take box medians and ratios: hero height / frame height, shadow / lit luma, ground / card
-  luma and saturation, path / ground luma, corner / centre luma, pieces counted in the sharp band. Rank the gaps by
-  visibility, give each ONE owner and a measured "Do:" line, and end with "what already matches (do not break)".
+  luma and saturation, leading line / ground luma, corner / centre luma, pieces counted in the sharp band. Rank the
+  gaps by visibility, give each ONE owner and a measured "Do:" line, and end with "what already matches (do not break)".
   Typical first gaps (countryside): cast shadow 0.35-0.59 of lit vs 0.7-0.87; corner/centre 0.39 vs 0.61; path/ground
   1.02 vs 1.25; an even pale rim round every piece vs a dark cut line lit only on its key side.
 
@@ -132,16 +132,16 @@ else. The 3D template's `?test` shows your scene's test cards this way (the bund
 bush, a rock and a box house there). When the brief has anything walked on, under or into, put a construction or
 two of it in the test as well (a deck on posts, stairs, a bridge) and walk them (`?test&walk`). Start from
 `assets/lib/paperkit-3d.js` or `assets/lib/paperkit-2d.js`, or from a template: `assets/templates/popup-3d/` (in-world
-framing, ~250 pieces from a noise fill) or `assets/templates/popup-2d/` (Canvas 2D, pitched orthographic in-world
+framing, ~390 hinged pieces from a noise fill) or `assets/templates/popup-2d/` (Canvas 2D, pitched orthographic in-world
 view). Engine specifics: `references/three-js.md`, `references/web-2d.md`, `references/engines.md`.
 
 | Part | Get this right on the test card |
 |---|---|
-| Material | diffuse only (no specular, no sheen); soft terminator (wrap ~0.3); shadow side tinted warm, never black |
-| Fibre | fixed to the surface (it moves with a folding flap); two octaves (broad mottle + fine tooth) plus a sparse layer of crisp strands; per-sheet tone variation about +-6 %; screen grain, if any, under 0.01 |
+| Material | diffuse only (no specular, no sheen); soft terminator (wrap ~0.3); shadow side tinted with the world's leak colour, never black |
+| Fibre | fixed to the surface (it moves with a folding flap); two octaves (broad mottle + fine tooth) plus a sparse layer of crisp strands; per-sheet tone variation +-4-6 % (`makeCard` `tone` 0.04; `references/look.md` section 2); screen grain, if any, under 0.01 |
 | Cut edge | a thin dark-brown line at the silhouette (~1.5-2.5 px on screen) + a pale highlight just inside it only on the edges facing the light (up to ~1.5 % of hero height, constant WORLD width), both from `P.rim()`; anti-aliased, no stair steps; no edge on folds (`makeCard({ folds })`); never an even pale band all round, never glowing or torn, never a second shader / post rim |
 | Thickness | a 1-2 px side face on standing card; inner layers get their own cut edge and a 1-2 px shadow |
-| Backs | plain kraft or cream stock with slight show-through, never the front colour in shade |
+| Backs | printed on crosses and the hero (`crossCard`'s default back is `'mirror'`); kraft with slight show-through on cards seen only from the front |
 | Shadows | tight darker contact line at every hinge / foot (0.6-0.7 of lit luma), then a soft cast shadow falling sideways and behind (0.7-0.87 of lit), tinted with the world's colour and more saturated than the ground: warm amber on warm ground by day (leak `#a0602c`), lilac-blue on snow, teal under water, navy at night; never grey or black |
 | Light | key 45-65 deg off the camera axis, 45-55 deg up; a frontal fill from the camera side at ~0.3 of the key, so a card facing the camera is not grey |
 | Pipeline | author albedo only; do light falloff, haze, AO, edge line, depth of field and grade in ONE post pass so every asset inherits them |
@@ -160,7 +160,7 @@ barely moved the score. Do it in the first content pass, not as polish.
 The rule for every piece: a chunky, simple, rounded silhouette cut from thick fibrous card, the cut edge (a thin dark
 line, a pale highlight on its lit side, nothing on folds), a layered print inside with 1-2 contrasting accents, a
 soft short shadow under it. Nothing is a bare flat colour, nothing is thin or spiky, nothing has an even pale halo or
-a heavy outline. The classes and sizes below are the countryside build's: map each to your subject's nearest
+a heavy outline. The classes below are the countryside build's: map each to your subject's nearest
 analogue (a tall landmark piece = a tree, a coral fan, a mast; a low mound = a bush, a sponge, a crate stack; a box
 fold = a house, a hab module, a market hall).
 
@@ -173,27 +173,31 @@ fold = a house, a hab module, a market hall).
   subject's own motifs the same way (rivets and panel lines, scales and pores, frost ferns). Without image
   generation: `references/procedural-art.md` (it counts these against the shipped prints). With it:
   `references/image-gen.md` (generate sheets in the target's style, curate, budget one regeneration, always look).
-- **Design for the camera:** buildings are box folds (walls, gable returns, roof slabs), never a single facade card.
-  Nothing may be seen edge-on: single cards turn to face the camera (+-14 deg jitter), or 2-3 fanned parallel cards;
-  slotted crosses for trees and round things, near plane at least 24 deg off the view axis; tall landmarks (a water
-  tower, a palm, a mast) read better from the down-looking camera as fanned pairs (a front card plus a darker,
-  mirrored rear copy) or box folds; V-folds closed by a third card.
+- **Design for the camera:** pick each kind's structure type from `references/structures.md` section 0, and let
+  nothing be seen edge-on: single cards face the camera (+-14 deg when yaw is omitted); low things (grass, bushes,
+  flowers, rocks) are single or layered cards facing the camera, never crosses; anything upright and round that is
+  walked around is a full cross, its main plane ~24 deg off facing the camera; buildings are box folds or prisms,
+  never a single facade card; ridges are V-folds, the apex away from the camera and the mouth closed by a low card;
+  fanned pairs only for things seen from one side.
 - **Layers per piece:** tuft 2, bush 3, tree 2 crossed cards + print, house a box + 4-6 parts, animal 2-3, prop 2-4.
-  The hero is a puppet of ~8-10 cards at 2-3 depths with legs that stride, a face, costume detail and colours that
-  contrast with the ground, standing in the sharpest rows, never one flat card; design the character for your
-  subject (`mechanisms.md` section 12).
-- **Scale relations matter more than absolute size:** hero 6-10 % of frame height; trees 2-2.5x the hero; bushes and
-  boulders 0.5-0.9x the hero tall and about twice as wide (flat-based mounds, `shape.mound`); houses ~1.7x;
-  human-scale props (benches, signposts, barrels) and small animals inside the groups.
+  The hero is a small 3D paper model (~10-20 cards: every part a frontal card with a profile card BEHIND it, legs
+  and arms on hip and shoulder pivots, the back printed) that yaws to face the way it walks; in 2D a puppet of cards
+  that mirrors. Its face reads in every mood; costume detail and colours that contrast with the ground; headgear and
+  carried items only if the character's design has them; it stands in the sharpest rows, never one flat card. Design
+  the character for your subject (`references/mechanisms.md` section 12).
+- **Scale relations matter more than absolute size:** hero 6-10 % of frame height; every kind at its ratio to the
+  hero by role (`references/worlds.md` section 8); human-scale props and small creatures inside the groups.
 - **Ground and height:** the ground stays flat. Hills are nested hill cards, rock outcrops are clusters of tall
-  slanted two-tone cards, and everything the hero walks on, under or into is an open construction (the GROUND line
-  of the style card; `references/mechanisms.md`): build it and wire its walk surface before dressing around it.
-- **Composition:** 100-250 pieces (standing cards whose base is in frame; a stacked bush counts as one) of ~20 kinds
-  (15-25) in groups of 4-8 different pieces around an anchor, repeats varied in size, hue and turn, at most ~3
-  identical props in view; the sharp band packed (measure.py barePct <= ~55), the open ground mostly outside it
-  (paths, water, clearings of at least 2 hero heights); a curving leading line (a path, a river, a road, a canal);
-  the hero off-centre; no group stamped twice; fences enclose something; paths connect doors; every frame holds one
-  small story; 2-4 big, heavily blurred pieces along the bottom edge for depth. More in `references/worlds.md`.
+  slanted two-tone cards, and everything the hero walks on, under or into is an open construction (`SKILL.md`
+  laws 8-9; `references/mechanisms.md`): build it and wire its walk surface before dressing around it.
+- **Composition:** 100-250 pieces of ~20 kinds (15-25) in frame (a crossed tree or a stacked bush counts as one
+  piece; the source game's gameplay frames hold ~270-320 standing cards, which the 3D template's
+  `__papercraft.cards()` counts) in groups of 4-8 different pieces around an anchor, repeats varied in size, hue and
+  turn, at most ~3 identical props in view; the sharp band packed (measure.py barePct <= ~55), the open ground mostly
+  outside it (clearings of at least 2 hero heights, the leading line, water only if the brief has it); one curving
+  leading line of the subject's own by default (a lane, a corridor, a current, a ski run); the hero off-centre; no
+  group stamped twice; fences enclose something; paths connect doors; every frame holds one small story; 2-4 big,
+  heavily blurred pieces along the bottom edge for depth. More in `references/worlds.md`.
 - **Motion:** rotation about visible hinges only, plus a small flex; no scaling, stretching or fading in, except the
   pop, flip and shrink-away verbs for small things (`references/motion.md`, the allowed exceptions to "nothing
   scales"). `references/mechanisms.md`.
@@ -225,7 +229,11 @@ Nothing can be compared, measured or reverted if two runs differ.
   gates.
 - **Stills:** load the page with `?capture`, wait for `ready`, `restart(); step(T)`, then grab right after the render
   (fresh drawing buffer): `canvas.toDataURL()` in the same task as `step()`, or a headless browser screenshot. Fail
-  the capture on a console error or a black frame; run it after every change.
+  the capture on a console error or a black frame; run it after every change. For the 3D harness,
+  `scripts/capture.py <project> [shots]` does all of it (serves the folder, headless Chrome with the GPU, named shots:
+  overview, midrise, test, key, mood=, look=, spot=, walk=, at=, hold=) and prints the build time, the slowest prints
+  and every page error; it exits non-zero on a page error or a walk that does not arrive (a hand-rolled capture of one
+  tester hid a page error and cost it a round).
 - **Motion:** trigger-aligned contact sheets (e.g. 48 frames at 30 fps from the first fold event) let critics judge
   motion from a still.
 - **Video:** frame-stepped at exactly the output rate (frame i at t = i / fps), never screen-recorded. Render audio
@@ -246,14 +254,19 @@ python scripts/measure.py ui.png --profile flat                          # UI / 
 python scripts/measure.py page.png --crop 320,180,1280,720               # a scene embedded in a page: that region only
 ```
 
-Profiles: `storybook` (default: the open-air in-world look by day and at dusk, and a pitched 2D world such as the
-popup-2d template), `night` (night), `flat` (UI pages, print and flat 2D art with no lens: the lens, corner, flat-area
-and print-density gates are off). `satMean` is gated at 0.52-0.80 around the 0.55-0.75 target. Expected WARNs,
-judged by eye: snow and fog frames trip `satMean` by design (the shipped snow frames measure 0.18-0.20); lilac-blue
-shadows on snow or teal ones under water may trip `shadowWarmth`; a bright surround (snow, a cloud sea) trips
+Profiles: `storybook` (default: the open-air in-world look by day, and a pitched 2D world such as the popup-2d
+template), `dusk` (golden hour and dusk: low light empties print detail and contrast, shadows go violet; a dark floor
+the brief names, black sand or slate, also measures here), `night` (night), `flat` (UI pages, print and flat 2D art with no lens: the lens, corner, flat-area
+and print-density gates are off). The storybook gates admit every day frame of the gallery's five environments
+(`assets/gallery/`, measured as 1600 px PNG captures; a downscaled or JPEG frame reads lower in print detail and
+contrast): `satMean` from 0.12 (snow and fog measure ~0.15-0.20, colourful worlds 0.55-0.75), `lumaP95` from 0.55 (a
+dark forest ~0.60), `warmthLR` from -0.10 (a desert); the night gates admit its night frames. A WARN therefore means
+"further off than any shipped biome", never "not autumn". Expected WARNs, judged by eye: lilac-blue shadows on snow
+or teal ones under water may trip `shadowWarmth`; a bright surround (snow, a cloud sea) trips
 `cornerCentre`; on a snowy night the night gate flags blue-white highlights when snow dominates the frame. The sharp
 band is `focusHeight` (its height at half the peak sharpness, as a share of the frame height): it WARNs under 0.35,
-or with `--target` when it is more than 0.10 from the target's; aim for ~0.36-0.45 on the hero frame. The gates are
+or with `--target` when it is more than 0.10 from the target's; aim for ~0.55-0.75 on the hero frame (the gallery's
+gameplay frames 0.67-0.72; the part that LOOKS crisp is narrower, ~36-45 % of the height). The gates are
 starting points; re-tune them for your own look: `python scripts/measure.py --dump-ranges > my.json`, edit, then pass
 `--ranges my.json`. With `--target`, metrics that have a tolerance also WARN when they drift from the target's own
 value, and the table lists target colours missing from your frame. `--compact` gives one row per shot, including
@@ -263,8 +276,8 @@ Reference numbers (measured with `measure.py`, 1600 px wide):
 
 | Metric | Shipped day frames (15) | Gold target | Night frames (6) | Early template render |
 |---|---|---|---|---|
-| lumaP50 / lumaP95 | 0.35-0.72 / 0.66-0.85 | 0.42 / 0.74 | 0.10-0.25 / 0.40-0.66 | 0.43 / 0.64 |
-| satMean | 0.55-0.78 (snow 0.18-0.20) | 0.69 | 0.40-0.63 | 0.51 |
+| lumaP50 / lumaP95 | 0.35-0.72 / 0.60-0.85 (dark forest ~0.60) | 0.42 / 0.74 | 0.10-0.25 / 0.36-0.66 | 0.43 / 0.64 |
+| satMean | 0.55-0.78 (snow 0.15-0.20) | 0.69 | 0.40-0.63 | 0.51 |
 | chromaP95 | 47-73 (snow 28-41) | 73 | 20-44 | 32 |
 | shadowWarmth (darkest 20 %) | 0.39-0.65 (snow 0.10-0.23) | 0.50 | -0.59 to -0.09 (indigo) | 0.30 |
 | cornerCentre | 0.71-1.13 | 0.62 | 0.14-0.37 | 0.75 |
@@ -348,27 +361,27 @@ Anti-patterns and the fixes that worked, grouped:
 
 | Lesson | Symptom (as critics or the owner saw it) | Fix (numbers relative where possible) |
 |---|---|---|
-| Camera | "a flat map with tiny scattered pieces"; hero reads as a hat disc | long lens (fov 24-32) looking down 40-55 deg, ground past every edge; chunky pieces (hero 6-10 % of frame height, the tall pieces such as trees 2-2.5x the hero) in dense groups; slivers dropped |
+| Camera | "a flat map with tiny scattered pieces"; hero reads as a hat disc | long lens (fov 24-32) looking down 40-55 deg, ground past every edge; chunky pieces (hero 6-10 % of frame height, every kind at its ratio to the hero by role: `references/worlds.md` section 8) in dense groups; slivers dropped |
 | Lens | bottom third "mush"; a hard line where blur switches | blur ~80 % from depth, smooth ramp, max radius 12-18 px at 1080p (a Canvas `blur()` sigma is about half that), near side a bit stronger; never a step |
 | Miniature | scene reads full-size | tilt-shift plus big blurred pieces at the bottom edge; haze, if any, subtle and only in the far distance (by distance from the subject), never a colour fog over the frame |
 | Material | "uniform same-scale noise", "felt" | two-octave fibre + sparse crisp strands, mottle x0.4; long curly dark strands read as leather; screen grain is not fibre |
-| Material | faces turned from the key go near-black | wrap ~0.3, key:fill ~3.5:1, kraft backs with ~45 % show-through |
+| Material | faces turned from the key go near-black | wrap ~0.3, key:fill ~3.5:1, kraft backs with ~45 % show-through on cards seen only from the front |
 | Light | upright cards facing the camera go grey | a frontal fill from the camera side at ~0.3 of the key (without it they get ~60 % of the ground's light) |
 | Edges | thin, aliased, cold edge; then a "white sticker halo" | the edge printed in the art by `P.rim()`: a thin dark-brown line at the silhouette + a pale highlight only on the lit edges, colours from the print itself, anti-aliased; no edge on folds; never a second shader / post rim on top |
 | Art | flat-colour cut-outs read as confetti, stickers, texture borders | printed illustration inside every silhouette (step 4) |
-| Shapes | "front face only" buildings; X-shaped blades; edge-on rails | box folds; camera-facing cards with jitter or fanned parallel cards; slotted crosses only for trees and round things (water towers, palms, landmarks: fanned pairs or box folds); V-folds closed by a third card; rails leaning outward |
+| Shapes | "front face only" buildings; X-shaped blades; edge-on rails | box folds and prisms; low things as camera-facing cards with jitter or fanned parallel cards, never crosses; full crosses for upright round things walked around, palms included, the main plane ~24 deg off facing the camera (the type for each kind: `references/structures.md` section 0); V-folds closed by a low card; rails leaning outward |
 | Light | hard, long, dark CG shadows | key 45-55 deg up and 45-65 deg off the camera axis, soft penumbra, cast 0.7-0.87 of lit, contact 0.6-0.7, tinted with the world's colour and more saturated than the ground (warm amber on warm ground) |
 | Light | literal 3000 K key: saturation 0.70-0.85, sage turned lime | mild warm key plus white balance ("warm in look, not in the light colour") |
-| Light | the brief's cool fill gave grey-blue CG shadows by day | warm frontal fill by day; blue only at night |
-| Palette | "one saturated olive green" (the countryside's ground) | a ground ~0.16-0.22 brighter and ~0.16-0.25 less saturated than the cards, hue-masked desaturation (there: a muted olive-khaki, hue ~40-45 deg); a lead family on the pieces, each with contrasting accents (there: warm, with teal water the only cool note) |
-| Palette | new art under the grade clipped to pure orange | re-check saturation (frame mean 0.55-0.75) after every art change (grade 1.04 -> 0.92) |
-| Frame | dark rim, corner/centre luma 0.39 | printed ground past every edge instead of a dark surround, vignette ~0.1: corners 0.6-1.1 of the centre's luma, warm, never near black |
+| Light | the brief's cool fill gave grey-blue CG shadows by day | the fill from the brief's light preset, the leak in the world's shadow colour, so shadows never go grey |
+| Palette | "one saturated olive green" (the countryside's ground) | a ground ~0.16-0.22 brighter and ~0.16-0.25 less saturated than the cards, hue-masked desaturation; one lead family from the brief on the pieces, each with contrasting accents |
+| Palette | new art under the grade clipped to pure orange | re-check saturation (the frame mean as rich as the world: `references/palettes.md` rule 3) after every art change (grade 1.04 -> 0.92) |
+| Frame | dark rim, corner/centre luma 0.39 | printed ground past every edge instead of a dark surround; vignette 0.03 by day, ~0.12 at dusk and night (`references/look.md` section 7), corners >= ~0.58 of the centre's luma, in the world's colour, never near black |
 | Ground | "stains and a tile grid"; "ruler-band" paths | one ground tone with multi-scale mottle, invisible seams; paths lighter than the ground (the countryside's: luma x1.25, pinker), winding, width +-20 %, feathered edge |
 | Water | a flat print | depth steps, pale rim + darker waterline, drifting dashes, mirrored reflections of what stands at the bank (the strongest "alive" cue) |
-| Layout | even scatter, house grid; a few props on an empty plain | 100-250 pieces in groups of 4-8 different pieces, the sharp band packed (barePct <= ~55), clearings mostly outside it; a curving leading line (a path, a river); no group stamped twice; fences enclose; lanes connect doors; one small story per frame |
+| Layout | even scatter, house grid; a few props on an empty plain | dense groups of different pieces round anchors, the sharp band packed, clearings mostly outside it, one leading line of the world's own, no group stamped twice, one small story per frame (the numbers: section 4, Composition) |
 | Glow | bloom hides the hero | low bloom above a high threshold; light pools on the paper instead of glow (the kit has no bloom: lit panes are emissive and the lens turns them into bokeh) |
 | Motion | flaps move like rigid boards; nested parts scissor | spring: overshoot 8-15 %, latch, 2-3 quiver cycles at 4-7 Hz, slight twist; children follow the parent's progress; stagger 0.2-0.35 s |
-| Night | flat, magenta night; warm-printed boats gone black under a cool fill | a dim near-neutral moon over a navy ambient, warm lamp pools, the pieces kept warm (about half the pixels) with navy only far away and in deep shadows; warm prints turned toward the key or given a practical; back-light translucency cool and weak; no neutral greys |
+| Night | flat, magenta night; warm-printed boats gone black under a cool fill | a dim near-neutral moon over a navy ambient; the pieces re-lit, not repainted: warm windows and lamp pools carry the warmth, navy only far away and in deep shadows; warm prints turned toward the key or given a practical; back-light translucency cool and weak; no neutral greys |
 | Play | stuck "where there is room"; walking through houses | one card spec drives rendering AND collision; probe stalls numerically (stalls 12 -> 1) |
 
 ## 9. Prompt templates
@@ -424,16 +437,17 @@ STANDING DECISIONS (owner; do not undo; they override critics, references and me
 - [ ] The style card exists, fits on one page, and lists LOCKED owner decisions and what is out of scope.
 - [ ] One target (image or written) is measured; conflicts with the brief are resolved in the log.
 - [ ] Paper kit: diffuse only, two-octave fibre fixed to the surface, the cut edge (dark line + lit-side highlight,
-      none on folds), kraft backs, contact and cast shadows tinted by the world (never grey or black), a frontal
-      fill; checked at 1:1, at play distance and at 6x.
+      none on folds), printed backs on crosses and the hero (kraft show-through on cards seen only from the front),
+      contact and cast shadows tinted by the world (never grey or black), a frontal fill; checked at 1:1, at play
+      distance and at 6x.
 - [ ] Every piece: chunky silhouette, a layered print (3-5 inks, 3+ value steps, one ornament) with contrasting
       accents, the cut edge, short soft shadow. No bare flat colour, even pale halo, edge-on blade or single facade
       card anywhere in the review set.
 - [ ] The ground is flat; height comes from hill cards and outcrops; everything walked on, under or into is an open
       construction read by the walk logic (deck + sides, treads + stringers, posts), walked end to end.
 - [ ] The camera looks down 40-55 deg and the ground runs past every edge; the sharp band ~36-45 % of the frame
-      height; 100-250 pieces in groups of 4-8 different pieces, barePct <= ~55, clearings mostly outside the band;
-      the hero is 6-10 % of frame height, off-centre and readable in every shot (bloom, occlusion, contrast).
+      height; density, groups and clearings as in section 4 (Composition); the hero is 6-10 % of frame height,
+      off-centre and readable in every shot (bloom, occlusion, contrast).
 - [ ] Motion rotates about hinges only (plus small flex and the pop, flip and shrink-away verbs for small things);
       triggers have hysteresis; the camera rests when nothing moves.
 - [ ] Sound is quiet, sparse and low-passed, and the owner has listened to it.

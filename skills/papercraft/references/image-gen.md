@@ -20,8 +20,9 @@ Contents: 1 Rules; 2 Concept frames and the gold target; 3 Sprite sheets on a ke
   hinges, thickness, ground prints, normals, outlines, packing (the cut edge came with the art, section 3).
 - **Budget:** one call per sheet or frame, at most 1-2 regenerations per set, and look at every output. The first pass
   in the source project was 8 sheets with 0 regenerations, all usable. Keep a log: prompt, image inputs, seed, verdict.
-- **Never ship third-party images** (references, screenshots, photos). Use them, if at all, as image inputs for light,
-  material and density only, and say so in the prompt.
+- **Never ship third-party images** (references, screenshots, photos). Use the user's references, if at all, as image
+  inputs for what they give (palette, light, materials, motifs, silhouettes, density: `gallery.md` section 1), never
+  to copy their composition, characters or logos, and say so in the prompt.
 
 ## 2. Concept frames and the gold target
 
@@ -34,20 +35,23 @@ frame, so light, palette and lens match across the set:
             (~40 % of the height), strong blur top and bottom, big blurred cards across the bottom edge
 [SUBJECT]   <one sentence: the place, the hero, the moment, the twist>
 [MATERIAL]  everything made of matte uncoated rigid cardstock with crisp die-cut edges, in a limited palette: <5-8
-            colour words or hexes>; warm pieces on a paler, muted <olive-khaki> ground, each printed as a layered paper
-            collage with 1-2 accent colours that contrast with it
+            colour words or hexes from the brief and its references>; <the lead family> pieces on a paler, muted
+            <the world's floor: sand, snow, moss, deck plates...> ground, each printed as a layered paper collage with
+            1-2 accent colours that contrast with it
 [CRAFT]     thin dark cut outlines with a pale highlight on the lit side, visible fibre and tooth, slightly imperfect
             hand-cut shapes, layered cut-paper silhouettes with small gaps and soft contact shadows, <mechanism cues:
             hinges, folds, tabs>
-[LIGHT]     <warm low key from the left>, <frontal fill>, <practical lights>; shadows tinted by the world, never grey
+[LIGHT]     <the brief's light (a preset in assets/lights.json), e.g. a mild warm key from the left>, <frontal fill>,
+            <practical lights>; shadows tinted by the world, never grey
 [SURROUND]  the printed paper ground fills the frame and runs past every edge
 [AVOID]     no sky, horizon, backdrop, table, room, page edge or border; no text, letters, logos or UI; no plastic, no
             glossy CG render, no vector-cartoon look
 ```
 
-- Make 4-6 frames: hero, a mid-motion moment (a fold), a material close-up, a busy area, a special feature (water,
-  bridge), a wide frame at the same 40-55 deg pitch. 15 of 19 generated style frames were kept; the rejects showed a
-  bordered page on a table, flat illustration without depth of field, pink overload, "smooth CG" and felt-like snow.
+- Make 4-6 frames: hero, a mid-motion moment (a fold), a material close-up, a busy area, a special feature of the
+  brief's own (a landmark, a bridge; water only if it has some), a wide frame at the same 40-55 deg pitch. 15 of 19
+  generated style frames were kept; the rejects showed a bordered page on a table, flat illustration without depth of
+  field, pink overload, "smooth CG" and felt-like snow.
 - **Frames are targets to measure, not content to copy:** palette clusters, cut-edge width, fibre RMS, focus band,
   shadow/lit ratio, relative sizes, counts per area (`process.md`, `scripts/measure.py`). Generated frames are
   idealised: blind critics always picked them, so never use "the critic cannot tell" as a pass rule against them.
@@ -79,16 +83,17 @@ CRAFT       flat frontal scan of hand-cut paper collage pieces; each piece a col
             printed gouache detail; every piece has a thin dark-brown cut outline (about <2-3> % of the piece height)
             right at its outer silhouette, with a pale highlight just inside it on the upper-left (lit) edges only;
             nothing thinner than a pencil
-PRINT       what each category may carry (leaves and berries on trees; shingles, lit 4-pane windows, plank doors on
-            houses; natural markings only on animals; two tones, a soft inner shade and a few pale dabs on clouds and
-            smoke); every piece 3-5 inks, 3+ value steps and one ornament, with 1-2 accent colours that contrast with
-            its base, never tone-on-tone; motifs big, bold and few (~1/6-1/8 of the piece's width)
+PRINT       <what each of this world's categories may carry, from the brief (the countryside example: leaves and
+            berries on trees; shingles, lit 4-pane windows, plank doors on houses; natural markings only on animals;
+            two tones, a soft inner shade and a few pale dabs on clouds and smoke)>; every piece 3-5 inks, 3+ value
+            steps and one ornament, with 1-2 accent colours that contrast with its base, never tone-on-tone; motifs
+            big, bold and few (~1/6-1/8 of the piece's width)
 PALETTE     <6-9 hex colours with roles>
 BASE        each piece has a flat straight bottom edge (it is hinged to a page; bushes and rocks are mounds on a flat
             base, never balanced on a point) | free-floating, no base
 AVOID       perspective, isometric, bevelled 3D, cast or drop shadows, glows or soft halos, an even cream or white
             border round a piece (sticker look), blur, glossy highlights, airbrushing, lighting gradients, text, logos,
-            people, frames
+            people or creatures the LAYOUT does not list, frames
 ```
 
 - **Key colour:** pure magenta by default, with "no magenta or pink inside any piece" in the prompt: the cutter cannot
@@ -98,7 +103,7 @@ AVOID       perspective, isometric, bevelled 3D, cast or drop shadows, glows or 
   40 px at source (pieces closer than ~10 px merge in the cutter).
 - **Counts drift** unless you write "EXACTLY N ... Row 1: ..." and name empty cells; some tools even accept explicit
   pixel layout ("column centres at x = ...; row baselines at y = ...").
-- **The cut edge in the art is the rim** (dark line + lit-side highlight, `procedural-art.md` section 3). Never add a
+- **The cut edge in the art is the rim** (dark line + lit-side highlight, `look.md` section 3). Never add a
   second shader or post rim on top. Small pieces need a proportionally fatter edge than big ones, so ask per sheet, or
   fix the width after cutting. A sheet that comes back with an even cream rim all round is a reject (section 8).
 
@@ -114,7 +119,8 @@ Image 2 is the LAYOUT reference: keep the same pieces in the same grid cells, sa
 silhouette role, and redraw every piece in the style of image 1. Do not add, remove or merge any piece.
 ```
 
-- A third input can carry palette and mood (a biome frame) while the gold frame carries the craft.
+- A third input can carry palette and mood (a concept frame of this world's own biome, or the user's reference; never a
+  gallery still) while the gold frame carries the craft.
 - In the source project all 18 restyled sheets were swapped in and none reverted. Restyling added 2-4 layers with
   pale lips, stone-fleck walls, framed lit windows, arched plank doors, shingle rows with lips, and crowns with a
   branch tree and 20-30 two-tone leaves (keep motifs big and few: ~1/6-1/8 of the piece's width, counted in tens). It
@@ -127,10 +133,11 @@ silhouette role, and redraw every piece in the style of image 1. Do not add, rem
 ## 5. Consistency
 
 - One hex palette per sheet, one shared style block per set, the same key and grid rules on every sheet.
-- The hero is never a pose sheet: he is a built puppet of several cards (`mechanisms.md` section 12). Generate his
-  parts as separate pieces on one sheet (a body with its costume detail, a head with a face, each leg, an arm with
-  whatever the subject carries, headgear if any, the carried item), cut each as its own card and rig them. The pose
-  rows below are for small background critters only.
+- The hero is never a pose sheet. In 3D he is a small paper model of T-crossed parts (a frontal card with a profile
+  card behind it, the back printed; `mechanisms.md` section 12): generate each part's front, side and back as separate
+  pieces on one sheet (the body with its costume detail, the head with a face, each leg, each arm; headgear and a
+  carried item only if his design has them), cut each as its own card and build the model. In 2D he is a puppet of
+  front cards that mirrors to turn (`web-2d.md` section 3). The pose rows below are for small background critters only.
 - Grow characters in steps: an in-world concept from your screenshots, then a design sheet (rows = individuals,
   columns = poses), then a production sheet on the key with the design sheets as inputs, then more variants with the
   first production sheet as input ("two MORE coats of exactly the same cat").
@@ -192,9 +199,9 @@ def cut_sheet(path, key='magenta', thresh=60, min_area=0.001, erode=2, bleed=12)
   cut width / height, `tone` = the sprite's mean colour). Build and test the card
   pipeline against a dummy atlas in this format (striped fills, a pale dot top-left and a dark dot bottom-right so
   flips show) before any art exists.
-- **Multi-pose frames** (critters only; the hero is a rig of cards): store per frame the foot row and an anchor
-  column at the alpha-weighted centre, so frame swaps do not slide; cut every frame at its own lowest row; give small
-  creatures proportionally more texels.
+- **Multi-pose frames** (critters only; the hero is built from part cards, section 5): store per frame the foot row
+  and an anchor column at the alpha-weighted centre, so frame swaps do not slide; cut every frame at its own lowest
+  row; give small creatures proportionally more texels.
 
 ## 7. Paper photos
 

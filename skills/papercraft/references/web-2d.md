@@ -27,9 +27,10 @@ is literally a book or a page inside a UI: a flat side view with a sky backdrop 
 scored such a 2D city 2/10).
 
 1. **Ground.** One continuous printed sheet larger than the frame, of this world's own floor (deck plates, sand,
-   snow, tiles, meadow): two-tone washes, the subject's own leading line (a corridor, a current, a road, a track; a
-   river only if the world has water), small marks in drifts (tufts and flowers in the countryside example, rivets or
-   shells elsewhere), the paper sheet multiplied over it. Landmarks by hand, then groups and clearings from a slow noise (`worlds.md`).
+   snow, tiles, meadow): two-tone washes, regions torn with a pale fibrous fringe, the subject's own leading line (a
+   corridor, a current, a road, a track; a river only if the world has water; section 3), small marks in drifts (tufts
+   and flowers in the countryside example, rivets or shells elsewhere), the paper sheet multiplied over it. Landmarks
+   by hand, then groups and clearings from a slow noise (`worlds.md`).
 2. **Cut outline + print.** Build the outline (`P2.shape.*`; mounds on a flat base, such as bushes, rocks, coral
    heads or drifts, with `shape.mound`; hand-cut with `P2.roughen`) and print it with `P2.printCard(outline, { paint,
    sheet })` as a layered collage (law 4: 3-5 inks in 3+ value steps, an ornament, contrasting motifs), inner shade
@@ -37,15 +38,17 @@ scored such a 2D city 2/10).
 3. **The cut edge** with `P.rim()`, which derives both tones from the print: a thin dark-brown line at the silhouette
    (~1.5-2.5 px on screen) and a pale highlight just inside it only on the edges that face the light; never an even
    pale band. Folds get no edge: `skip` the hinge base and panel joins (`look.md` section 3).
-4. **Shadows on the ground**, warm umber, never grey: the silhouette projected along the light (section 3), plus a
-   soft contact pool under each base so every standing piece touches the ground.
+4. **Shadows on the ground** in the world's shadow colour, never neutral grey (the harness's `shadow` option, from the
+   leak of the brief's light preset in `assets/lights.json`: warm umber on a warm ground by day, lilac-blue on snow,
+   navy at night): the silhouette projected along the light (section 3), plus a soft contact pool under each base so
+   every standing piece touches the ground.
 5. **Light.** One key ~54 deg up (template `[-0.7, 1.1, 0.4]`), from the side and a little from the front, so
    shadows fall sideways and behind, where the camera sees them: at ~65 deg they hid behind the cards, lower they
    rake into long streaks, and under a pure side key cards that face the viewer cast only thin slivers. 2D has no
    lights and no tone mapper: bake a mild grade (saturation and contrast) into the prints and the ground once; at
    most a faint warm vignette, never a colour fog or a sepia multiply.
-6. **Tilt-shift.** One sharp band through the subject (measured: ~36-45 % of the frame height, `measure.py`
-   focusHeight >= 0.35; the template's `band` 0.28 plus its ramp), blur growing above and below; big blurred pieces
+6. **Tilt-shift.** One sharp band through the subject (~36-45 % of the frame height looks crisp; `measure.py`
+   focusHeight reads ~0.55-0.75, gate >= 0.35; the template's `band` 0.28 plus its ramp), blur growing above and below; big blurred pieces
    overlapping the bottom edge sell the miniature scale.
 
 ## 3. Canvas 2D
@@ -80,16 +83,17 @@ important implementation points:
 - **Cast shadows** are the silhouette projected along the light onto the ground, an exact affine map of the print.
   With L toward the key (x right, y up, z toward the viewer; template `[-0.7, 1.1, 0.4]`, normalised),
   a = -cos(phi) Lx/Ly and b = sin(phi) - cos(phi) Lz/Ly, a card point (u, v) on a base at screen (x, y) lands at
-  `x' = x + S*u + S*a*v`, `y' = y + S*sinP*b*v` (sinP = sin(pitch)). Draw a pre-blurred, half-resolution umber
-  silhouette through that matrix (alpha 0.5 x p; S becomes S k for the piece's depth), then a soft radial contact
-  pool under each base (alpha ~0.65 x p), then the cards. A 2D frame's lumaP5 sits near 0.29-0.32, at the top of
-  the day gate: if `measure.py` flags "no darks", deepen the contact pools.
+  `x' = x + S*u + S*a*v`, `y' = y + S*sinP*b*v` (sinP = sin(pitch)). Draw a pre-blurred, half-resolution silhouette
+  in the `shadow` colour through that matrix (alpha 0.5 x p; S becomes S k for the piece's depth), then a soft radial
+  contact pool under each base (alpha ~0.65 x p), then the cards. A 2D frame's lumaP5 sits near 0.29-0.32, at the top
+  of the day gate: if `measure.py` flags "no darks", deepen the contact pools.
 - **Shading.** Over each card draw a dark copy of its silhouette at alpha (1 - lit) x 0.9, with lit = 0.62 + 0.3 x
   wrap(n.L) + 0.12 x max(0, k), wrap(d) = max(0, (d + 0.3) / 1.3), n the normal of the face you see; the k term is a
   fill from the camera side, so cards facing the viewer never go grey.
-- **Grade.** Bake `saturate(1.3) contrast(1.08)` into each print sprite and the ground layer when you build them
-  (`ctx.filter`); multiplying a key colour over the finished frame went muddy and sepia (a blind critic: "17 % vivid
-  pixels against 34-59 %"). Then a faint warm vignette (alpha <= 0.08).
+- **Grade.** Bake the harness's `grade` into each print sprite and the ground layer when you build them (`ctx.filter`;
+  the template's `saturate(1.3) contrast(1.08)` is tuned on its colourful example: lower the saturate for snow, mist
+  or pale briefs and check satMean); multiplying a key colour over the finished frame went muddy and sepia (a blind
+  critic: "17 % vivid pixels against 34-59 %"). Then a faint warm vignette (alpha <= 0.08).
 - **Tilt-shift.** Pre-blur each print once for where its middle stands in the frame (`ctx.filter = 'blur(Npx)'`, N in
   print px). Project the ground to a screen-size canvas once per size and draw a copy blurred by the max blur over it
   through a vertical gradient whose alpha follows the blur at each row (`buildGroundLayer()`). Template: band 0.28 of
@@ -102,11 +106,13 @@ important implementation points:
   print px per screen px (template: 1.25, clamped to 16-48 px per unit) and use `'medium'`.
 - **The 2D template** is a fixed harness (`harness-2d.js`: projection, ground sheet, pieces, raised surfaces, lens,
   walking, capture hook) + your `scene.js`: `const H = createHarness2D({ view, light, grade, ground, shadow, kraft,
-  walk, play })`, `H.printGround(t => ...)` (your world's own ground; tools `washes`, `ribbon(fx, w, colour, wobble)`, `line` along any
-  polyline, `drifts`), `H.piece(pts, paint, { x, z, y, yaw, sway, seed, slotted, sharp, holes, float, bob, reflect })`
-  (`float`: never touches the ground, so no shadow and no contact pool; `bob`: a floating piece bobs; `reflect`: a
-  darker mirrored copy below it on water), `H.decks.push({ z, draw, shadow })` for every raised surface, `H.walk` (add
-  its surfaces, blocks, walls and solids), `H.setHero(body, { parts })` (a puppet's cards: `{ p, dx, dy, dz, swing }`),
+  walk, play })`, `H.printGround(t => ...)` (your world's own ground; tools `washes`, `ribbon(fx, w, colour, wobble)`,
+  `line` along any polyline, `drifts`), `H.piece(pts, paint, { x, z, y, yaw, sway, seed, slotted, sharp, holes,
+  float, bob, reflect })` (`float`: never touches the ground, so no shadow and no contact pool; `bob`: a floating
+  piece bobs; `reflect`: a faint dark mirrored silhouette under a floating piece, alpha 0.22; prefer printed
+  reflection marks on the water, `structures.md` section 6), `H.decks.push({ z, draw, shadow })` for every raised
+  surface, `H.walk` (add its surfaces, blocks, walls and solids), `H.setHero(body, { parts, step })` (a puppet's
+  cards: `{ p, dx, dy, dz, leg }`, `leg: 0 | 1` on the two leg cards; `step`: the step length, default 0.9),
   `H.start()`. Prints of your own (a deck, a roof) use `H.Q` (print px per unit), `H.sheet` and `H.mk(w, h)`, and you
   bake `H.grade` into them (`ctx.filter = H.grade` when you copy the print, as the example's deck does): the harness
   grades only its own pieces and the ground. The capture hook: `restart()`, `step(seconds)`, `resume()`, `toggle()`,
@@ -116,10 +122,9 @@ important implementation points:
   there), `walk`, `hero`, `pieces`, `buildMs`, `ready`. There is no `?test` or `?diag=key` in 2D: prove the material
   on the first frame's 3x crops, and see where the shadows fall by passing `shadow: '#000000'` once (they draw at
   alpha 0.5 x p).
-- **Measuring a 2D world**: use the storybook profile, the default (a pitched world; `flat` is only for UI pages and
-  print and switches the lens and density gates off). Expect lumaP5 near the top of the day gate (2D has no deep
-  occlusion: deepen contact pools), and barePct to count a canal, a river or a path through the sharp band as bare:
-  dress their banks, do not fill them.
+- **Measuring a 2D world**: use the profile of its light: `storybook` by day, `dusk` for golden hour and dusk, `night`
+  at night (`flat` is only for UI pages and print and switches the lens and density gates off). barePct counts a
+  canal, a river or a path through the sharp band as bare: dress their banks, do not fill them.
 - **Units.** Fix the world width across the frame and scale by `devicePixelRatio` (capped at 2). Tie the width to the
   hero's share of the frame height (law 8): `across ~ hero x cos(pitch) x 16 / (9 x share)`; a 3.2-unit hero at 40 deg
   and 8 % gives ~54, the template's value (64 put him at ~7 %; a test build at 52 read much denser). `printCard` caps
@@ -136,11 +141,14 @@ important implementation points:
   paper, never black. The harness has no glow option: push a `decks` item keyed just in front of the card (`z: card.z
   + 0.0005`, so `render()` draws it right after the card) whose `draw()` works inside `H.g.save()` / `restore()` (it
   inherits the card's transform and must not leave 'lighter' on), resets the transform and adds the glow at
-  `H.proj(card.x + u, v, card.z)` for a pane at (u, v) on the standing card, times `card.spring.p`. A 2D mood (dusk,
-  night, snow) is the palette plus the `ground`, `shadow` and `grade` options: there are no lights to retune.
-- **Flying things** (birds, cars, balloons, leaves) are cards too: give them a crease to flap (one angle, not a scale),
-  hang them on a paper stalk or a wire from a card, or let them fly side-on; when the page closes they fold flat with
-  the card they hang from. A free flyer in a tilted view folds into a floating sliver: avoid that.
+  `H.proj(card.x + u, v, card.z)` for a pane at (u, v) on the standing card, times `card.spring.p`. A 2D mood (golden
+  hour, dusk, night) keeps the world's prints and re-lights them through the `grade` filter, the `shadow` colour (the
+  preset's leak in `assets/lights.json`) and the `ground`, plus lit panes: there are no lights to retune.
+- **Life** (weather, flyers, creatures: `motion.md` section 12; `lib/paper-life.js` is the 3D plumbing): in 2D draw the
+  same kinds as small cut shapes in the air and on the page, with the same numbers. Fallers are creased and rock
+  face-up, then rest on the page and shrink away; flyers fly side-on and flap by one crease angle, never a scale;
+  creatures are cards that flip to turn, with a behaviour. Only something that must fold with the page (a kite, a
+  hanging sign) hangs on a paper stalk or a wire from a card, and folds flat with it.
 - **Performance.** Per frame the template draws one pre-projected ground image and ~4 `drawImage` per card (shadow,
   pool, print, dark copy). Measure fps in the live loop: timing `step()` misses the canvas work the browser defers
   past your code. The [0, 0.05] s clamp turns a frame rate under 20 fps into slow motion, not dropped frames. Very
@@ -153,9 +161,10 @@ important implementation points:
   subject (tall near pieces hid the bridge and the hero in a test) and check every group member for space, not only
   the group's anchor: the example scene's `corridor()` and `free()` show one way, write your own for your layout. The
   walk cycle: `motion.md` section 8.
-- **Paths and rivers in any direction.** `P2.pathLine([[x, z], ...])` returns `{ pts, dist }`: draw the ribbon
-  through `pts` (round caps), keep pieces off it with `dist(x, z)`, so one spec drives the print and the placement
-  (the template's `x = f(z)` helpers cannot turn back).
+- **Leading lines in any direction** (one by default; water only if the brief has it). `P2.pathLine([[x, z], ...])`
+  returns `{ pts, dist }`: print a band through `pts` as torn paper with a pale fibrous border, both edges jittered,
+  never a smooth stroke, bending twice in frame (`structures.md` section 6); keep pieces off it with `dist(x, z)`, so
+  one spec drives the print and the placement (the template's `x = f(z)` helpers cannot turn back).
 - **Built structures in 2D** (bridges, boardwalks, piers, platforms, stairs: `mechanisms.md` section 14). Never one
   bridge card standing on the water. Build them open, from the same parts as in 3D, drawn through your projection
   (a solid printed face only for built masonry the brief names, never for natural terrain):
@@ -198,13 +207,13 @@ important implementation points:
     stepped side cards along the flight; never stacked blocks. The walk height steps with the treads.
   - **Walking.** `WalkField` (`paper-motion.js`, engine-free) with world-space surfaces `{ heightAt(x, z) }` (null off
     the deck), the water as a block, houses and trees as solids, a `radius` for the hero's feet; draw the hero at
-    `proj(x, y, z)` with y from the field. The hero is a doll (`mechanisms.md` section 12), never one card (a 2D stage cannot yaw
-    a model as the 3D harness does, so here it mirrors): the body
-    card slides along the field and turns by flipping its x scale with a cut at the midpoint (|scale| jumps from 0.3
-    to -0.3, never edge-on); `setHero(body, { parts })` makes the parts follow it (x offsets mirror when he turns),
-    rise with its spring and step with the stride (`swing`); pass `float: true` on the parts that never touch the
-    ground (no shadow or contact pool of their own). The 2D harness walks by default (`play: true`; `?still` turns it
-    off); `__papercraft.place(x, z)` and `__papercraft.walkPath(points)` script it.
+    `proj(x, y, z)` with y from the field. The hero is a doll (`mechanisms.md` section 12), never one card (a 2D stage
+    cannot yaw a model as the 3D harness does, so here it mirrors): the body card slides along the field and turns by
+    flipping its x scale with a cut at the midpoint (|scale| jumps from 0.3 to -0.3, never edge-on);
+    `setHero(body, { parts, step })` makes the parts follow it (x offsets mirror when he turns), rise with its spring,
+    and step the two leg cards (`leg: 0 | 1`) with the distance walked (`step`: the step length); pass `float: true`
+    on the parts that never touch the ground (no shadow or contact pool of their own). The 2D harness walks by default
+    (`play: true`; `?still` turns it off); `__papercraft.place(x, z)` and `__papercraft.walkPath(points)` script it.
 - **Side-scrollers and parallax** keep this camera: the world stays pitched (40 deg in the template) with the ground
   past every edge, and the view scrolls along x by translating the projected ground layer (Interactive 2D above).
   Parallax lives only between the big blurred near cards and the world, never in layers before a sky or a printed
@@ -215,8 +224,8 @@ important implementation points:
 An SVG scene uses the Canvas framing and projection (sections 2-3): the printed ground runs past every edge of the
 viewBox; each card is a `<g transform="matrix(1 0 0 k x y)">` round art drawn with its base on y = 0 and its top
 toward -y (the back art when k < 0); its cast shadow is the same silhouette through `matrix(1 0 -a -sinP*b x y)`,
-filled umber, blurred, at ~0.5 opacity. Flats lying on a page (a page inside a UI, a book brief) take the two drop
-shadows below.
+filled with the world's shadow colour (section 2), blurred, at ~0.5 opacity. Flats lying on a page (a page inside a
+UI, a book brief) take the two drop shadows below.
 
 ```html
 <svg viewBox="0 0 1600 900">
@@ -236,10 +245,11 @@ shadows below.
       <feMorphology in="SourceAlpha" operator="erode" radius="1" result="in"/>   <!-- stay inside the dark line -->
       <feOffset in="in" dx="1.5" dy="2" result="away"/>                           <!-- moved away from the key -->
       <feComposite in="in" in2="away" operator="out" result="strip"/>
-      <feFlood flood-color="#ded5b1"/><feComposite in2="strip" operator="in" result="lit"/> <!-- fill ~60 % to cream -->
+      <feFlood style="flood-color: var(--piece-lit)"/>   <!-- the piece's fill mixed ~60 % toward cream -->
+      <feComposite in2="strip" operator="in" result="lit"/>
       <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="lit"/></feMerge>
     </filter>
-    <!-- flats on a page only: tight contact + soft cast toward the lower right, warm umber -->
+    <!-- flats on a page only: tight contact + soft cast toward the lower right, in the world's shadow colour -->
     <filter id="paper-shadow" x="-10%" y="-10%" width="130%" height="130%">
       <feDropShadow dx="2" dy="2" stdDeviation="1.2" flood-color="#4a2c22" flood-opacity="0.5"/>
       <feDropShadow dx="9" dy="7" stdDeviation="7" flood-color="#4a2c22" flood-opacity="0.3"/>
@@ -247,12 +257,13 @@ shadows below.
     <path id="hill" d="..."/>
   </defs>
   <g filter="url(#paper-shadow)"><g filter="url(#cut)">
-    <use href="#hill" fill="#a8a374" filter="url(#lit-edge)"/>
+    <use href="#hill" style="fill: var(--piece)" filter="url(#lit-edge)"/>   <!-- the piece's own colour -->
     <use href="#hill" fill="none" stroke="#3a2412" stroke-width="2"/>  <!-- the cut: a thin dark-brown line -->
   </g></g>
 </svg>
 ```
 
+- Set `--piece` and `--piece-lit` on the `<svg>` or above: the `lit-edge` filter reads them there, not on the `<use>`.
 - Flats on a page: one `<g>` per layer; apply the shadow filter per layer with offsets scaled by that layer's gap.
 - Print detail as extra paths clipped to the card (`clip-path`), inks at 0.5-0.9 opacity, offset 0.5-1 px for
   misregistration.
@@ -268,7 +279,7 @@ For HTML elements that should be cards (sections, panels, buttons):
 
 ```css
 .card {
-  background: #efe0c2 url(paper.png);           /* or an SVG data-URI feTurbulence tile; fibre fixed to the element */
+  background: var(--page) url(paper.png);       /* your world's page colour; or an SVG data-URI feTurbulence tile */
   border-radius: 3px 5px 4px 6px;               /* slightly uneven, never pill-shaped */
   box-shadow: inset 1px 1px 0 rgba(251,246,234,.75), /* pale highlight inside the lit (upper-left) edges only */
               0 0 0 1px rgba(74,44,34,.8),      /* the cut: a thin dark-brown line at the silhouette... */
@@ -314,8 +325,7 @@ spring sampled into `linear()` easings (size 0.3; scale the duration with size: 
   for final output (variable frame timing). The 2D template exposes `window.__papercraft.restart()`,
   `window.__papercraft.step(seconds)` (fixed 1/60 s steps, then one render) and `resume()` (back to the live loop);
   `?capture` hides the hint.
-- Stop-motion, only when the brief asks for it (the style moves smoothly): quantise time to 12 fps holds and
-  jitter each card by +-0.5 px per held frame, seeded by the frame index, or 24 fps with motion on twos; never combine
-  it with smooth camera motion.
+- Stop-motion only when the brief asks for it (the style moves smoothly): `motion.md` section 11 (in 2D apply its
+  per-pose hinge turn and slide to each card's phi and x).
 - Sound: render the paper foley offline from the same event list (`renderOffline` in `assets/lib/paper-sound.js`),
   keep music as a separate stem (`sound.md`).

@@ -72,8 +72,8 @@ the same countable ways every time. Check each kind of piece:
   layer of crisp distinct strands, a few dark shives. Relief comes from tooth and fibres only (high-pass the height),
   so sheets stay rigid card.
 - Crumple lives in the normal only: broad creases change the light, never the print.
-- Per-sheet tone: each piece +-4-6.5 % in value from a hash of the piece (brighter sheets warmer: R +35 %, B -50 % of
-  the drift). Key it to the piece, never to the frame (`look.md` section 2).
+- Per-sheet tone: each piece +-4-6 % in value (`makeCard` `tone` 0.04) from a hash of the piece (brighter sheets
+  warmer: R +35 %, B -50 % of the drift). Key it to the piece, never to the frame (`look.md` section 2).
 - Dead matte: normal strength calibrated to a mean tilt of 4-7 degrees (card 5.5), roughness about 0.93, no specular.
 - Periodic by construction: FFT band noise, strokes redrawn across the wrap, wrap-mode blurs. Never cross-fade a seam.
 
@@ -157,8 +157,9 @@ or it shifts your palette.
   countryside example: trees 2-2.5x the hero, bushes and boulders 0.5-0.9x tall and ~2x as wide, houses ~1.7x;
   whatever plays the same role in your world (a canopy, a ground cover, a dwelling) takes about the same scale.
 - Cut real holes only when they are big (arches, gates, more than ~10 px); small openings are printed.
-- The bare silhouette should name the object at 32 px. Build complex objects from several cards (box folds, crossed or
-  fanned cards, see `mechanisms.md`), not from one intricate outline.
+- The bare silhouette should name the object at 32 px. Build complex objects from several cards (structure types:
+  `structures.md`; construction details: `mechanisms.md`), not from one intricate outline. For a crossed piece design
+  both planes: the front view and the side view (or a print variant), each printed in full (`mechanisms.md` section 5).
 
 **Vocabulary** (kit shapes in `assets/lib/paperkit-2d.js`; "custom" = a union of chunky primitives traced into one
 cut by `fromDrawing(draw, { w, h })` with the `draw2` helpers, or a few arcs and lines, see section 4; the parts must
@@ -183,7 +184,7 @@ touch or overlap, and only the outer boundary is traced, so a closed opening fil
 | animal | ellipse body + circle head + paired stub legs (1/4+ of body height) + one raised layer | custom (`drawnPiece`) | fur fringe, line tails |
 | small props | bench, signpost, barrel, mushroom: fat planks, posts and stems, one connected cut | custom (`fromDrawing`) | thin legs |
 | fish, sea creature | almond body with a forked tail notch; octopus = dome + 4-6 fat curls | custom | thin fins |
-| hero | never one card: a built puppet of several cards at 2-3 depths (a body, a head with a face, an arm with whatever the subject carries, headgear if any, a carried item behind, two legs that stride), `mechanisms.md` section 12 | custom, one per card | one flat card, merged legs |
+| hero | never one card: a small 3D paper model of ~10-20 cards (in 2D a puppet of cards that mirrors), a front outline and a side outline behind it per part (a body, a head with a face, arms and legs on shoulder and hip pivots; headgear and carried items only if the character's design has them), the back printed; `mechanisms.md` section 12 | custom, one per card | one flat card, a mirrored stack of frontal cards, a profile card rising past the face, merged legs |
 | person in a crowd | hat or hair cap, head disc, trapezoid body, two fat legs on one base | custom | stick limbs |
 | water | scalloped wave strip on a flat base; ripples are printed, not cut | `shape.waves` | thin wave lines |
 | cloud, smoke | 4-6 lobes, flatter bottom; smoke as stacked discs or a spiral | `shape.radial` | wisps |
@@ -213,11 +214,12 @@ touch or overlap, and only the outer boundary is traced, so a closed opening fil
 - Accents: every piece carries 1-2 that contrast with its base, never tone-on-tone (red + olive leaves on an orange
   tree, cream flowers and red berries on a green bush, cream + amber on teal). Pick yours per piece (the countryside
   examples take `colors.accents: [a, b]`); `accentsFor(base)` is only a fallback pair: deep red + dark olive on orange
-  or green, terracotta + green on ochre, cream + amber on teal and blue, cream + gold on violet. Warm lead pieces on a
-  muted ground carry the colour; frame mean saturation (HSV S) lands ~0.55-0.75.
-- Outside autumn, carry the contrast with flowers and fruit, not red leaves on green (`palettes.md` rule 10):
-  `accentsFor` gives a green tree red + dark olive leaves, so pass `colors.accents` without the red and print
-  blossoms or fruit over the crown.
+  or green, terracotta + green on ochre, cream + amber on teal and blue, cream + gold on violet. The brief's lead
+  family on a muted ground carries the colour; frame mean saturation (HSV S) is as rich as the world: ~0.55-0.75 in a
+  colourful brief, far lower for snow, mist or fog (`palettes.md` rule 3).
+- Red leaves on green read as autumn or Christmas: unless the brief is autumn, carry the contrast with flowers and
+  fruit (`palettes.md` rule 10): `accentsFor` gives a green tree red + dark olive leaves, so pass `colors.accents`
+  without the red and print blossoms or fruit over the crown.
 
 **Motif library** (sizes relative to the surface they sit on; draw each mark from seeded randoms):
 
@@ -231,7 +233,7 @@ touch or overlap, and only the outer boundary is traced, so a closed opening fil
 | berries, flowers | clusters of 3-6 dots; 5 dots round a centre | 3-7 % | bushes, meadows |
 | grass tufts | fans of 2-4 fat tapered blades (width 1/5 of length) | | ground, bases |
 | ripples | light-ink lens slivers in staggered rows | 15-30 % of the strip | water |
-| windows | dark frame 12 % of the width, 2 x 2 panes `#F7D77E` with a brighter centre, a sill strip; lit by day too; printed (`P.glow`), never cut as a hole | | every building |
+| windows | dark frame 12 % of the width, 2 x 2 panes in the world's window colour (the countryside's `#F7D77E`) with a brighter centre, a sill strip; lit by day too; printed (`P.glow`), never cut as a hole | | buildings with windows |
 | doors | arched plank door, 2 plank lines, a knob dot | | buildings |
 | portholes | trim-colour ring + lit glass disc with a brighter centre | | ships, sci-fi |
 | rivets | rows of dots along panel edges, a pale dot offset toward the light optional | 1.5-3 px radius on screen | machines, hulls |
@@ -283,7 +285,7 @@ paper always come last):
 | building | wall 2-tone + `P.felt()` -> L: the material's units near the corners and the base (stones, plates, planks, blocks) -> L: a plinth or base band -> L per opening: a frame plus one trim of the subject's own (a cottage: shutters and a flower box; a module: a hood and vents; a temple: a lintel and a carved band), panes printed and glowing -> L: door with a pale cut edge -> L: one story detail (a climber, a sign, a banner) -> roof in its material's rows (shingles, tiles, plates), each an L with a pale lower edge, 3 tones per row (countryside example: `paintHouse`) |
 | rock card (boulder, outcrop) | 2-tone + `P.felt()` -> L: the darker facet band (a fold turned from the light) -> L: a paler lit facet -> speckle -> L: a cap (moss, snow, sand) |
 | creature | `drawnPiece` back to front: tail -> body -> haunch / wing (raised) -> legs -> head -> ears -> pale chest and cheek -> eye, nose, stripes printed (`ink(c, 'print')`; countryside examples: `critter.*`) |
-| hero (one print per card) | the cards of a built puppet (`mechanisms.md` section 12): a body card with costume detail (trim, a belt, buttons), a head ~1.3x natural size with a printed face, an arm card with whatever the subject carries, headgear if any, a carried item behind, two leg cards on hip pivots; chunky, toy-like proportions in colours that contrast with the ground; he stands in the sharp band |
+| hero (one print per card) | a frontal print and a profile print per part (`mechanisms.md` section 12): the body with costume detail (trim, a belt, buttons), arms and legs, a head ~1.3x natural size whose printed face sits a step lighter than you would paint it, so it reads in every mood; headgear and carried items only if the character's design has them; the back printed too (hair, a coat back, a pack); chunky, toy-like proportions in colours that contrast with the ground; he stands in the sharp band |
 | person in a crowd | one `drawnPiece`: legs -> carried item -> body -> head -> headgear -> arm and prop; eyes and costume trim printed; extras only, never the hero |
 | machine, sci-fi | hull 2-tone + `P.felt()` -> L: panels (each plate a part, lips show the seams) -> L: band -> rivets printed -> L: portholes / lit windows -> stripes, decals printed |
 | landform (hill, bank, dune, reef shelf) | each of the 3-5 nested cards: 2-tone + `P.felt()` -> L: a lighter crest band along the top edge -> L: a darker lower band -> sparse marks; nearer cards lower and ~10-15 % lighter (`mechanisms.md` section 8); never a raised block of terrain with strata on its face |
@@ -377,7 +379,7 @@ In the kit: glued layers (`P.layer`, `P.parts`). Supplied below: ink finishing a
 **4.1 Helpers** (canvas 2D; copy next to the kit):
 
 ```js
-import { rng, shade, roughen, printCard, paperSheet, tracePath, tileNoise } from './assets/lib/paperkit-2d.js';
+import { rng, shade, roughen, printCard, paperSheet, tracePath, tileNoise } from 'papercraft/lib/paperkit-2d.js';
 
 // Glued layers are in the kit: P.layer(shape, colour, { shadow, lip, shade, rim, felt, depth }) inside any paint(P).
 // shape = an outline, a Path2D, or a function (g) that fills the part(s) itself; every separate part in one call gets
@@ -563,11 +565,11 @@ Check at final resolution and at the main camera, then on 6x crops:
 | Seamless | seam ratio 1.5 or less; nothing shows on a 3 x 3 tiling at x4 contrast | wrap step / mean neighbour step (`--preview`) |
 | Cut edge | every piece, small and large alike: a dark-brown line 1.5-2.5 px at the silhouette, a pale highlight inside it on the lit edges only; no even pale band; no edge on folds; one rim; no stair steps | profile across the silhouette on 6x crops, lit and shaded side |
 | Nothing too thin | no ink feature under 1 screen px (aim 1.5+); no silhouette part under ~6 px; convex corners 3 px+ radius | measure the thinnest stem, rail, line |
-| Stands and scales | hinged pieces (bushes and rocks too) on a flat base; every kind at the ratio to the hero the spec gives it (countryside: trees 2-2.5x, bushes and boulders 0.5-0.9x tall and ~2x wide, dwellings ~1.7x) | wide frame, against the hero |
+| Stands and scales | hinged pieces (bushes and rocks too) on a flat base; every kind at the ratio to the hero the spec gives it by role (section 2) | wide frame, against the hero |
 | Print present | every piece: 3-5 inks (a two-tone base, 1-2 layer tones, 1-2 contrasting accents), 3+ value steps, one ornament, motifs >= ~20 L* from their base, speckle; interior luma std 0.12-0.24 (a fibre-only card ~0.08) | per-sprite stats; shipped printed sprites measured 0.12-0.24 |
 | Counts | motifs big, bold and few (~1/6-1/8 of the card's width, counted in tens), the structure reaching the rim; big pieces as a darker outer band or card round a lighter inner motif panel; no flat run of one tone over ~1/4 of a card | per kind, against section 0 |
 | Frame | dark accents ~8-16 % of the sharp band by day; 4-6 variants per kind; at most ~3 identical props in view | wide frame, by eye |
 | Layers read | pieces over ~60 px show 2+ layers, each with a lit-side lip and a shadow | 3x crop |
-| Palette within N colours | k-means (k = 8, Lab) per piece: every cluster over 5 % within dE00 5 of a palette role; one hue family + at most 2 accents per area, plus edge line and highlight, window yellow and ink; frame mean HSV S ~0.55-0.75 | `palettes.md`, `scripts/measure.py` |
+| Palette within N colours | k-means (k = 8, Lab) per piece: every cluster over 5 % within dE00 5 of a palette role; one hue family + at most 2 accents per area, plus edge line and highlight, the world's window colour and ink; frame mean HSV S as rich as the world (`palettes.md` rule 3) | `palettes.md`, `scripts/measure.py` |
 | Deterministic | same seed, same pixels | hash two runs |
 | Beats flat | blind side-by-side against the same scene in flat fills: the printed version wins clearly | `process.md` |

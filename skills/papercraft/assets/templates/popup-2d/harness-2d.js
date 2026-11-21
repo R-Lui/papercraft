@@ -4,7 +4,7 @@
 // ramps, roofs) drawn through the projection, cast shadows, a tilt-shift lens baked into the prints, walking over the
 // walk field, and the capture hook. Keep it as it is; write your world in your own scene.js against the API below (the
 // bundled scene.js is the countryside worked example). URL switches: ?capture (no hint), ?walk / ?still (walking on /
-// off; createHarness2D({ play: true }) makes walking the default), ?view=x,z,zoom (a review camera).
+// off; walking is the default here: createHarness2D({ play: false }) turns it off), ?view=x,z,zoom (a review camera).
 // In your own project: copy assets/lib/ and this file, keep it as it is, and map "papercraft/" in your page's import map to
 // the folder that holds lib/ (the template's index.html maps it to ../../).
 //
@@ -20,14 +20,15 @@ import { PaperSound } from 'papercraft/lib/paper-sound.js';
  * createHarness2D(options) -> H. Options (all optional): view { pitch, dist, across, focus, band, ramp, maxBlur }
  * (across: world units across the frame; tie it to the hero's share of the frame height: across ~ hero x cos(pitch) x
  * 16 / (9 x share), ~54 for a 3.2-unit hero at 8 %), light [x, y, z] toward the key, grade (a canvas filter baked into
- * prints and ground), ground (the plain card colour), shadow (cast-shadow colour), kraft (card backs), walk { step,
+ * prints and ground), ground (your world's plain ground colour: set it), shadow (cast-shadow colour: your world's
+ * shadow hue; the default is a warm ground's umber), kraft (card backs), walk { step,
  * radius }, play (walking without ?walk).
  * H: P2, g (the 2D context), proj(x, y, z) -> [sx, sy, k], view, L (unit light), flags, bounds of the visible ground
  * (zTop, zBot, halfAt(z)), rnd (reseed it per section: H.reseed(n)), sheet (paper), Q (print px per unit), mk(w, h),
  * printGround(draw), piece(pts, paint, opts), decks (raised surfaces), walk (WalkField), setHero(piece, { parts }),
  * start().
  */
-export function createHarness2D({ view = {}, light = [-0.7, 1.1, 0.4], grade = 'saturate(1.3) contrast(1.08)', ground = '#cfc4a1',
+export function createHarness2D({ view = {}, light = [-0.7, 1.1, 0.4], grade = 'saturate(1.3) contrast(1.08)', ground = '#d9d2c2',
   shadow = '#6e3010', kraft = '#c9a77c', walk: walkOpts = { step: 0.6, radius: 0.45 }, play = true } = {}) {
   const T0 = performance.now();
   const Q_ = new URLSearchParams(location.search);
@@ -130,7 +131,7 @@ export function createHarness2D({ view = {}, light = [-0.7, 1.1, 0.4], grade = '
    * height), yaw (a small turn about the hinge), sway (wind, 0-1), seed, slotted (a slotted tree: a narrow crossed spine;
    * keep the spine plain, a busy crown squeezed reads as a striped pole), sharp (no baked blur: cards that MOVE), holes
    * (outlines cut through the card, rimmed like its outline), float (never touches the ground: no shadow, no contact
-   * pool), bob (world units: a floating piece bobs on the water), reflect (a darker mirrored copy below it on water).
+   * pool), bob (world units: a floating piece bobs on the water), reflect (a faint dark mirrored silhouette under a floating piece; prefer printed reflection marks on the water).
    */
   function piece(pts, paint, { x = 0, z = 0, y = 0, seed = pieces.length * 7 + 3, sway = 0, yaw = 0, slotted = false, sharp = false, holes = null, float = false, bob = 0, reflect = false } = {}) {
     const pr = P2.printCard(pts, { pxPerUnit: Q, sheet, seed, holes, paint: (P) => {

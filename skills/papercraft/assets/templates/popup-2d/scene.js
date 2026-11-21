@@ -84,7 +84,7 @@ const solids = taken.slice();                         // the houses and the well
 place('barrel', pathX(-4) + 4.2, -4); place('cat', pathX(-3.3) + 5.6, -3.3, { yaw: 0.4 }); place('fence', pathX(-1) + 3.2, -1, { yaw: -0.35 }); place('sign', pathX(-15) - 2, -15, { yaw: 0.3 });
 taken.push([pathX(-4) + 4.6, -4, 2.4], [pathX(-1) + 3.2, -1, 2.8], [pathX(-15) - 2, -15, 1.4]);
 for (const [z, dx] of [[-8, 0.6], [5, -0.8], [6.5, 0.6]]) place('duck', riverX(z) + dx, z, { yaw: 0.4, bob: 0.06, reflect: true });
-// the footbridge: built in depth like the 3D kit's bridge(), never one flat card on the water. Two side cards (foot on
+// the footbridge: built in depth like bridge() in examples/built-ground.js, never one flat card on the water. Two side cards (foot on
 // the banks, an arch over the water, a parapet over the deck line; the FRONT one lower so the deck shows over it) and a
 // deck surface drawn between them (drawDeck2D), rising with them. deckAt(x, z): the walk height on the deck.
 const BX = riverX(BZ), BHS = 5.2, BW = 1.7, DA1 = 26 * Math.PI / 180, DA2 = 8 * Math.PI / 180, Dz1 = BHS * 0.42, Dh1 = (BHS - Dz1) * Math.tan(DA1);

@@ -9,8 +9,9 @@ import { makeCard, platform, boxFold } from '../lib/paperkit-3d.js';
 import { shape as P2shape, shade, rng } from '../lib/paperkit-2d.js';
 import { paintWall, paintHouse, paintRoof } from './countryside.js';   // the cottage's prints only
 
-// The constructions below print NEUTRAL card by default (a two-tone sheet with felt, planks or courses as layers):
-// pass your subject's prints in `paints` (the template passes the countryside ones). paints.side of a bridge may be a
+// The constructions below print plain card by default in this example world's material colours (a two-tone sheet with
+// planks or courses as layers): pass your subject's colours and prints in `colors` / `paints` (the template passes
+// the countryside ones). paints.side of a bridge may be a
 // factory (deckH, arch) => printer, so a custom side print can follow the deck line.
 const neutral = (c) => (P) => { P.gradient(shade(c, 0.1), shade(c, -0.12), 0.5); P.felt(1); P.innerShade(shade(c, -0.6), { alpha: 0.25, blurPx: 10 }); };
 const banded = (c, n, vertical = false) => (P) => {          // planks / courses / treads: every band its own layer
@@ -44,6 +45,7 @@ export function boxHouse({ colors, windows = 2, wallH = 3, paints = {}, chimney 
         P.draw((gg) => { gg.fillStyle = '#5a3020'; gg.fillRect(P.box.x0 - 1, P.box.y1 - P.box.h * 0.12, P.box.w + 2, P.box.h * 0.12 + 1); });
       }) });
     ch.position.set(-w * 0.24, -roofH * 0.18, 0); g.userData.ridge.add(ch);
+    g.userData.chimneyTop = { object: ch, offset: [0, chH * 1.02, 0] };   // for smoke: paper-life puffs({ at: [...] })
   }
   return g;
 }

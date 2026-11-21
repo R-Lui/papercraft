@@ -27,9 +27,10 @@ Units: **H** = hero height, **M** = module (one generator tile; ~3.3 H in the so
    foreground.
 7. **The ground stays flat; what the hero walks on is built open**: bridges, jetties, boardwalks, stairs and lookout
    decks are constructions (a deck on posts, planks between side cards, treads on stringers) and the walk field reads
-   them (`mechanisms.md` section 14); height on the land comes only from nested hill cards and rock outcrops
-   (`mechanisms.md` section 8). The generator places the constructions as landmarks first and keeps the dressing off
-   them.
+   them (`mechanisms.md` section 14); height on the land comes only from nested cards, V-folds and rock outcrops
+   (`mechanisms.md` sections 6 and 8), and a slope the brief names is built as terraces and steps (`mechanisms.md`
+   section 14; a masonry terrace with a printed face is allowed there). The generator places the constructions as
+   landmarks first and keeps the dressing off them.
 
 ## 2. The page is the world
 
@@ -42,11 +43,11 @@ Units: **H** = hero height, **M** = module (one generator tile; ~3.3 H in the so
   ~0.8 H in depth), but everything printed on it is fixed in the world, so the print scrolls under it.
 - **Quiet seams.** Hinge score lines are a pop-up cue; a tile grid is a game cue. Module seams: at most a 1-2 px
   crease at ~4 % darkness, better none (critics flagged "visible tiling grid lines").
-- **The one exception: a brief that is literally a physical book** (or a page inside a UI) shows the book on a
-  lamp-lit table (`look.md` section 1): a page block, covers, an unprinted cream margin (~1.2 H) where nothing rises.
-  Its world-side rules, if it has gutters (world-fixed folds every ~7 M): each is a real valley (half width ~0.35 M,
-  ~7 % H deep, ~27 % H toward the head and tail edges) with every shading tilt eased to zero AT the fold, and the
-  hero's height follows the dip; a hard dark gutter read as a rule through the frame. Nothing else here changes.
+- **The one exception: a brief that is literally a physical book** (or a page inside a UI) shows the page's edge
+  (`look.md` section 1): a page block, covers, an unprinted margin (~1.2 H) where nothing rises; the look inside stays
+  this one. Its world-side rules, if it has gutters (world-fixed folds every ~7 M): each is a real valley (half width
+  ~0.35 M, ~7 % H deep, ~27 % H toward the head and tail edges) with every shading tilt eased to zero AT the fold, and
+  the hero's height follows the dip; a hard dark gutter read as a rule through the frame. Nothing else here changes.
 - **Unrevealed land as a pencil plan** *(opt, strong)*: full colour within ~1.3 R of the subject; beyond ~2.25 R a
   pale wash with pencil outlines (the luma gradient of the print itself) and light hatching in dark areas; a
   noise-warped boundary (+-0.27 R). Prints of pieces not yet risen stay ~30 % paler and greyer (25 % colour beyond
@@ -242,11 +243,13 @@ channels and coral heads, station corridors and modules, ski runs and chalets.
 
 ## 8. Density and scale that read as paper
 
-- **Dense, chunky, grouped.** At the hero framing: 100-250 pieces of ~20 kinds in groups of 4-8, 6-10 groups in the
-  frame, the sharp band packed (measure.py barePct, the share of the band's tiles with no edge at all, <= ~55; the
-  shipped frames 44-56), the open ground mostly outside it (paths, water, a few clearings); round 8 builds with wide
-  empty stretches inside the band read as "not enough stuff". A scatter of tiny slivers reads as confetti. Streaming:
-  at most ~5 soft filler cards per module, ~6-30 cards per module in all.
+- **Dense, chunky, grouped.** At the hero framing: 100-250 pieces of ~20 kinds in frame (a crossed tree or a stacked
+  bush counts as one piece; the source game's gameplay frames hold ~270-320 standing cards, and `__papercraft.cards()`
+  in the 3D harness counts yours) in groups of 4-8, 6-10 groups in the frame, the sharp band packed (measure.py
+  barePct, the share of the band's tiles with no edge at all, <= ~55; the shipped frames 44-56), the open ground mostly
+  outside it (the leading line, any water, a few clearings); round 8 builds with wide empty stretches inside the band
+  read as "not enough stuff". A scatter of tiny slivers reads as confetti. Streaming: at most ~5 soft filler cards per
+  module, ~6-30 cards per module in all.
 - **Sizes against the hero** (hero 6-10 % of the frame height), by role, the countryside's kinds as the example: the
   tallest common kind 2-2.5 H (trees here: they had to grow 1.42x in height and 1.72x in canopy after "a flat green
   field with small scattered pieces"; coral heads on a reef, masts and tanks on a station), buildings ~1.7 H, low
@@ -264,13 +267,14 @@ channels and coral heads, station corridors and modules, ski runs and chalets.
   the fill); low fillers (tufts, stones, flowers, mushrooms) may repeat, varied, between groups, so the open ground is
   quiet, not empty. A world dressed with clones of 3-4 kinds read as a tech demo at once (round 5 builds, round 6
   critic).
-- **Design the negative space**: open lawn between groups, clumped (never even) spacing, the camera side of roads
-  low. Composition was the weakest score of the shipped world (3.5 -> 4.5 of 10): too busy and wooded, cottages
-  small against trees, even spacing.
-- **Lead lines**: roads, rivers and fences (currents, corridors, trails in other worlds) run as diagonals and curves
-  that bend at least twice in frame, never staircases, ruler lines or bands across the whole width
-  (`P2.pathLine(ctrl)` runs one in any direction; its `dist()` keeps pieces off it). Where a path and a river both
-  wind, check they cross only where a bridge is.
+- **Design the negative space**: open ground between groups, clumped (never even) spacing, the camera side of the
+  leading line low. Composition was the weakest score of the shipped countryside (3.5 -> 4.5 of 10): too busy and
+  wooded, its cottages small against the trees, even spacing.
+- **Lead lines**: ONE leading line by default, taken from the subject (a lane, a current, a corridor, a trail; section
+  9), runs as a diagonal or a curve that bends at least twice in frame, never a staircase, a ruler line or a band
+  across the whole width (`P2.pathLine(ctrl)` runs one in any direction; its `dist()` keeps pieces off it). A second
+  line only where the subject has two routes; where two lines both wind, check they cross only where a built crossing
+  is.
 
 ## 9. Composing one diorama
 
@@ -283,19 +287,23 @@ printed ground past every frame edge. Build it in two passes, as the 3D template
    (a bridge, a gantry) only where the subject has two routes. Water the brief does not ask for is the example
    leaking (a blind test put a teal "irrigation channel" with the example's torn rim, foam ripples and near-identical
    hexes into a space station); water the brief does ask for takes its world's form (a station trough: straight
-   panel sides, pipes, a tiled lip; a reef: no banks at all), never the example's torn river by default. Then a
-   landmark cluster (a hamlet; a coral head, a docking ring); the hero off-centre (the template: on the path, lower right third);
-   human-scale props and creatures at the doors, on the banks, by the path. Give each landmark a keep-out radius.
-2. **Then a fill from a slow noise** (a few summed sines, features several groups wide): woods where it is high,
-   groups of 4-8 different pieces in the middle, clearings where it is low. Candidates sit on a jittered grid, off the
-   water, the path and the keep-outs, and only where the camera can see: the template projects each candidate with
-   the camera (`inFrame`, tested ~1 H above the ground with a small margin), so nothing is built off screen. Draw each
-   group's kinds without repeats; never stamp a group twice.
+   panel sides, pipes, a tiled lip; a reef: no banks at all), never the example's torn river by default. Then the
+   subject's landmark cluster (a coral head, a docking ring; a hamlet only if the brief has one); the hero off-centre
+   (the template: on the path, lower right third); human-scale props and creatures where the landmark and the leading
+   line meet. Give each landmark a keep-out radius.
+2. **Then a fill from a slow noise** (a few summed sines, features several groups wide): the densest masses where it
+   is high, groups of 4-8 different pieces in the middle, clearings where it is low. Candidates sit on a jittered
+   grid, off the leading line, any water and the keep-outs, and only where the camera can see: the template projects
+   each candidate with the camera (`inFrame`, tested ~1 H above the ground with a small margin), so nothing is built
+   off screen. Draw each group's kinds without repeats; never stamp a group twice.
 
-**A camera that follows the hero** (a level he walks through, not one fixed frame): build the fill along his route,
-testing `inFrame` for cameras sampled along the path (keep a candidate if any of them sees it), and call
-`fitShadow(lights, lookAt)` whenever the camera moves (`three-js.md` section 5). The required wide review frame shows
-the fill's edge unless you also fill for the widest camera.
+**A camera that follows the hero** (a level he walks through, not one fixed frame): decide where he may walk
+(`createHarness({ walkArea })`, or `camBox` for one diorama the camera barely leaves) and fill with `H.inReach(x, z)`,
+which is true wherever any framing of that walk can show the point; `inFrame` alone dresses only the overview, and
+the walk finds bare page past it. Fill the overview first, then the ring `inReach && !inFrame` (the overview's own
+draws never change), and keep the ring cheap: stamps of a few prints (`H.printed`) at `res` 0.6-0.75 (`three-js.md`
+sections 1 and 9). The 3D harness refits the shadow map as the camera moves; your own wiring calls
+`fitShadow(lights, lookAt)` (`three-js.md` section 5).
 
 At the hero framing: density and sizes as in section 8; the hero 6-10 % of the frame height, off-centre, inside the
 sharp band.
@@ -304,22 +312,22 @@ The frame then reads in three depths:
 
 | Layer | What stands there | Treatment |
 |---|---|---|
-| Back (top of the frame) | far woods, layered hills, the far reach of the river or road; tall landmarks (mountains, volcanoes, towers) as layered flats just inside the top edge, so the frame cuts them | lowest contrast, a little far haze (never a colour fog); a hill = 3-5 nested cards stepped ~10-15 % in value, the back one tallest |
-| Middle | the subject's ground: hero, buildings, the big trees | full contrast and saturation, inside the sharp band, the strongest shadows |
-| Front (bottom edge) | 1-3 framing props (bushes, a fence end, a trunk) | darker, partly cropped by the bottom edge or a corner, heavily blurred by the near depth of field |
+| Back (top of the frame) | the far reach of the leading line, backdrop flats of the world's far land; tall landmarks (mountains, towers) as layered flats just inside the top edge (`H.groundAt(0, 0.95)` finds it), so the frame cuts them; a landmark whose top is the point (a smoking crater, a spire, a lighthouse lamp) comes nearer and toy-scale, its top inside the frame | lowest contrast, a little far haze (never a colour fog); a hill = 3-5 nested cards stepped ~10-15 % in value, the back one tallest |
+| Middle | the subject's ground: the hero, the landmark, the tallest common kinds | full contrast and saturation, inside the sharp band, the strongest shadows |
+| Front (bottom edge) | 1-3 framing props from the world's own dressing | darker, partly cropped by the bottom edge or a corner, heavily blurred by the near depth of field |
 
-- Layers stand 5-15 % of the object height apart; each layer is 10-15 % darker going away from the light, and every
-  front layer keeps its own cut edge: a dark line, a pale highlight on the lit side only (`look.md` sections 3-4).
+- Layer spacing, tone steps and cut edges: `mechanisms.md` section 8.
 - **Hero readable**: against a simpler, contrasting layer; nothing taller than the hero crosses him from the front.
 - **Framing foreground**: blurred props overlapping the bottom edge sell the miniature scale more than stronger blur;
   they never cover the hero or the centre.
-- Light reads through the layers: the warm key from the upper side throws each layer's shadow onto the next; keep
-  the area where things rise or matter in the top half of the frame.
-- Life *(opt)*: one or two moving accents (a bird crossing, chimney smoke, a lamp catching), not many.
+- Light reads through the layers: the key from the upper side throws each layer's shadow onto the next; keep the
+  area where things rise or matter in the top half of the frame.
+- Life: the world's own weather, flyers, smoke and creatures, 3-5 kinds chosen from its environment and time of day
+  (`motion.md` section 12; the gallery's five worlds each have their own, `gallery.md`).
 - Order of building and rising: `mechanisms.md` sections 4 and 8, `motion.md` section 5. The 3D template's
   `scene.js` is a worked example (river and path crossing at a bridge, a hamlet of box-fold houses with a small scene
   at each door, a pond with a jetty on posts, a rock outcrop, nested hills, a field with haystacks, the hero puppet on
-  the path, ~380 hinged pieces of ~25 kinds); write your own scene against the harness, do not ship it.
+  the path, ~390 hinged pieces of ~25 kinds); write your own scene against the harness, do not ship it.
 - 2D: the same three layers as parallax planes, with tone, haze and blur by depth.
 
 ## 10. Checks
@@ -331,9 +339,10 @@ The frame then reads in three depths:
 - [ ] The ground runs past every frame edge (no book edge, table, horizon or sky); density and sizes as in section 8
       (barePct <= ~55, groups of 4-8 different pieces, no confetti, no group stamped twice); the hero readable and
       off-centre.
-- [ ] The ground stays flat: height only from nested hill cards and rock outcrops; everything walked on, under or
-      into is an open construction the walk field reads, and a scripted walk crosses each (`mechanisms.md` section 14
-      Checks).
+- [ ] The ground stays flat: height only from nested cards, V-folds and rock outcrops, and a slope the brief names
+      from terraces and steps (`mechanisms.md` section 14); everything walked on, under or into is a construction the
+      walk field reads (open, or masonry the brief names), and a scripted walk crosses each (`mechanisms.md`
+      section 14 Checks).
 - [ ] The radii were derived from this camera (section 5), not copied.
 - [ ] A following camera: fill built along the route and for the widest camera; the wide review frame shows no fill
       edge; the shadow box follows the camera (`fitShadow`).

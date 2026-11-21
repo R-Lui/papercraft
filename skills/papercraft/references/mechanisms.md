@@ -9,6 +9,9 @@ Read this when: deciding how a tree, house, hill, creature, vehicle or character
 anything the hero walks on, under or into (section 14); making something fold flat without passing through itself;
 fixing cards that read as slivers from some views.
 
+Which type builds which thing: `structures.md` section 0 (the structure types and their constructors); this file is
+how each mechanism is built.
+
 Contents: 1 Ground rules; 2 The hinge in 3D and 2D; 3 Score-line flap; 4 Flat stacking; 5 Slot-together cross;
 6 V-fold; 7 Box fold (raised platforms, domes, lit windows); 8 Layered flats; 9 Fans, clumps, clusters,
 zig-zags; 10 Lean-outs and low flaps; 11 Spinners and simple movables; 12 Characters from cards; 13 Never edge-on;
@@ -21,36 +24,25 @@ every mechanism follows `motion.md`; materials and edges follow `look.md`; outli
 | Mechanism | Reads as | Use for |
 |---|---|---|
 | Score-line flap | a card standing on a crease | everything; the default |
-| Slot-together cross | two cards slotted at 90 deg | trees and round things (cacti, bushes in the round); landmarks read better as fanned pairs or box folds |
-| V-fold | two half silhouettes meeting at an apex | ridges, drifts (long axis across the view) |
-| Box fold | a folded net with volume | houses, barns, towers, chests |
+| Slot-together cross | two cards slotted at 90 deg | anything upright and round that is walked around: trees of every kind (palms and tiered conifers too), cacti, giant mushrooms, tents, posts, lamp posts, signposts, lanterns; the half, quarter and V-fold variants (`structures.md` section 3), a half-front cross for a sign or a tall flat landmark that needs a foot; not for low things (single cards, fans) |
+| V-fold | two half silhouettes meeting at an apex | ridges, dunes, drifts, outcrops: a quarter cross opened wider (section 6) |
+| Box fold | a folded net with volume | houses, barns, sheds, chests, landmarks; round towers, tanks, kiosks, flat-roofed blocks and other plans: `prismFold` (section 7) |
 | Raised platform (parallel fold) | a level deck held up off the page | stages, quays, station platforms; docks, piers, balconies on an open posts face |
 | Layered flats | flats with air between them | hills, dunes, skylines, the depth behind the subject |
 | Fan / clump / cluster | a few overlapping pieces as one mass | vegetation, rocks, dressing |
 | Lean-out / low flap | a card resting at a shallow angle | ramps, the deck ramps inside a bridge (14), water slivers |
 | Spinner | a layer turning on a hub | windmill sails, pinwheels, wheels |
 
-Any subject, same few mechanisms (twist the stock, palette and prints, not the construction):
-
-| Subject | Build it from |
-|---|---|
-| Trees, big plants, coral, crystals | slot-together crosses for big round crowns; palms as fanned pairs (one card carries the trunk, the other only fronds: two crossed trunks read as an X); fans and clumps for the small ones (5, 9) |
-| Buildings, vehicles, machines, furniture, landmarks | box folds with printed detail, or fanned pairs; spinners for wheels, fans and rotors (7, 9, 11) |
-| Stages, quays, platforms, docks, piers | raised platforms (7): a solid printed face only for masonry, an open posts face for timber; the pieces on the deck on their own hinges |
-| Market stalls, wells, carts, gazebos | open assemblies of separate cards with air between them (8) |
-| Hills, cliffs, mesas, crater rims, dunes, waves, clouds, skylines | the ground stays flat: nested hill cards, rock outcrops and layered flats (8); V-folds only with the long axis across the view (6); never a raised block of terrain |
-| Bridges, jetties, piers, boardwalks, stairs, ramps, lookouts: anything walked on | built ground, open: a deck on posts, a plank deck between side cards, treads on stringers, read by a walk field (14); natural ground stays flat (8) |
-| Roads, rivers, fields, plazas | the page print; never standing cards (14) |
-| Characters and creatures | profile cards crossed with a frontal plate, pivoted at the joints (12) |
-| Signs, lamps, small props | single flaps on the diagonals; a camera-facing turn if the camera yaw is fixed (3, 13) |
-| Small life (birds, leaves, sparks) | creased single cards; birds flap by changing one crease angle (`motion.md` section 9) |
-| Mid-water and air life (fish schools, flocks, bubbles, kites) | one card per creature on a thin printed stalk or thread down to the page, or a whole school as ONE card whose members overlap or sit on a printed ribbon (one connected cut: loose members are dropped) |
+The hero is a small 3D model whose parts are Ts (a frontal card with a profile card behind it, section 12); other
+creatures are single cards that flip to turn, and all life (weather, flyers, flocks, smoke, creatures) takes
+paper-life's kinds (`motion.md` section 12). A fish school or a flock may also be ONE card whose members overlap or
+sit on a printed ribbon (one connected cut: loose members are dropped, section 1).
 
 ## 1. Ground rules
 
 - Every standing thing is something you could build with a knife, a bone folder and glue: cut, scored, folded,
   slotted or glued. If it ever folds, it folds flat without passing through anything.
-- Every card is a slab (T = 1.5-3 % of H) with a hand-cut outline: `roughen` in `paperkit-2d.js` (default ~1.2 % of
+- Every card is a slab (T = 1.5-3 % of H) with a hand-cut outline: `roughen` in `paperkit-2d.js` (default 0.8 % of
   the smaller side; the source wandered 0.3-1 % of the piece size), points on the fold line never move (moving them
   opens gaps at the hinge).
 - One card is ONE connected cut. `fromDrawing` traces the outer boundary of the part holding the topmost pixel and
@@ -124,7 +116,7 @@ const lit = 0.6 + 0.4 * Math.max(0, n[1] * L[1] + n[2] * L[2]);   // L toward th
 | Feet | if the hinge sits on a raised stack layer, extend the card below the hinge down to the page | else every stand-up floats by its layer height |
 | Contact | darken toward the fold (baked or `makeCard({ contact })`) | 10-14 % over the lowest ~1/3 H |
 | Back | the same art mirrored (die-cut) or half kraft | `look.md` section 3 |
-| Score line | pale strip printed across the hinge, half-way from ground colour to page cream | ~3 % H wide, ~2 % H past each end |
+| Score line | pale strip printed across the hinge, half-way from ground colour to the paper stock | ~3 % H wide, ~2 % H past each end |
 | Glue tabs | kraft trapezoids at both ends, only on cards wider than ~0.5 H | ~18 % H wide at the hinge, 15 % at the tip, ~12 % H deep, ~0.17 H in from each end |
 | Twin | the piece's own print folded flat, baked onto the page (`worlds.md` section 3) | the same albedo as the flat card, so a spawn never pops; it fades as the card lifts |
 
@@ -159,44 +151,115 @@ cards.forEach((c, i) => (c.delay = cards.length > 1 ? 1 - i / (cards.length - 1)
 - 2D: for cards that fold back, the flat stack is the draw order; each folded layer gets a 1 px offset and a faint
   contact line. Forward folds (the pitched 2D default) use the two-pass order of section 2.
 
-## 5. Slot-together cross
+## 5. Slot-together cross: volume from two printed planes
 
-One flat cut-out is edge-on from two of four 90 deg views; two cards slotted at 90 deg read from everywhere.
+The papercraft way to give a thing volume without sculpting it: cut two cards of it, slot one halfway into the other
+at 90 deg, and print both. From any side the camera sees one plane nearly face-on (its print reads in full) and the
+other in perspective (its edge and its own print show the depth), and the slot line down the middle says "this was
+made". One flat card is edge-on from two of every four views; two slotted cards read from everywhere. It is the
+source game's main way to show volume: every tree, pine, palm, cactus and tent in the gallery is one (the
+`assets/gallery/*-close.jpg` frames show the two planes and the slot). Use it for anything of your own that should
+stand in the round, not only for those.
 
+**Build and turn**
 - 3D: the main card on the page hinge, plus two HALF cards (the outline clipped at its centre line) on vertical hinges
   on its front and back faces, nested, folding flat against the parent (+-90 deg), ~40 % of T thick, ~8 % darker
   than the front (reads as depth).
-- Turn the pair ~33 deg off the scene's main axes (planes at +33 / -57 deg) so neither is edge-on in any 90 deg
-  rotation; pick the sign so the folded card falls toward the piece's middle. The rule holds at the frame centre:
-  perspective shifts the view angle by up to ~20 deg toward the frame edges, so measure the yaw against the line
-  from the camera to the piece.
-- Use for trees and round things, tents, signposts, windmills. Water towers, palms and most landmarks read better as
-  fanned pairs (a front card plus a darker, mirrored rear copy, section 9) or box folds (section 7): a test agent's
-  water-tower cross read as a chevron. Not for small plants or low props: from a high camera the X reads as a blade
-  (use fans and clumps, section 9).
+- Turn it as the source game does: the main plane ~24 deg off facing the camera (the other ~66 deg off), with a few
+  degrees of seeded jitter and either sign, so the front print reads in full, the cross shows its depth and neither
+  plane is ever edge-on (a plane near edge-on reads as a blade or a propeller). Measure against the line from the
+  camera to the piece (perspective turns the view by up to ~20 deg toward the frame edges). The 3D harness does all
+  of this when `popup(..., { cross: true })` gets no `yaw`; vary the turns, so a wood of crosses reads deep, never as
+  a row of scenery flats.
+- The family: keep only part of the cross where the thing needs it: a HALF cross (the main card and one half: hidden
+  depth behind a face, or a buttress in front), a QUARTER cross (one half of each: a corner), opened wider into a
+  V-fold (a ridge: dunes, drifts, outcrops). Top views, uses and the `cross` / `angle` / `second` options:
+  `structures.md` section 3.
+- Give it a `solid` footprint (about the width of the crossed planes) so the hero walks round it, not through it.
 - Motion: drive the halves from the parent (`motion.md` section 2). A half hinged on a leaning parent dips below the
   page by `halfWidth * cos(theta) * sin(q)` while it unfolds; keep the base narrow (a trunk) or unfold the halves
   once the parent stands.
 - Kit: `crossCard(pts, opts)` returns a crossed pair whose second plane follows the parent hinge through
-  `userData.follow(p)`; put it on a `hinge()` and turn it ~30 deg off the view; print both planes with your crown
-  or tier print (the countryside example: `paintTree`, `paintPine`). Check in slow motion that the second plane
-  never sweeps through the first while opening; the two-half build above never crosses it.
+  `userData.follow(p)` (`opts.second = { pts, paint }`: the second plane's own outline and print; in the 3D harness
+  `popup(pts, paint, { cross: true, second })`); put it on a `hinge()` and turn it ~24 deg off the view (`popup`
+  does); print both planes with your crown or tier print (the countryside example: `paintTree`, `paintPine`). Check
+  in slow motion that the second plane never sweeps through the first while opening; the two-half build above never
+  crosses it.
 - 2D: the main card face-on; the fin as a narrower card of width `w * abs(sin(angle to the view))`, darker, with a
   thin shadow on the main card.
+
+**Designing the two planes.** Ask what the thing looks like from the front and from the side:
+- **The same all round** (a round tree, a bottle, a lamp post, a mushroom, a balloon): the same outline on both
+  planes, the print varied (another seed: other leaf positions, another tier pattern, spots moved).
+- **Different from the side** (a rocket with fins, a cactus with arms, a fingerpost, a windmill, a lantern with a
+  handle, a fish, a chair, an animal standing still): cut the main plane as the front view and the second as the side
+  view (`second.pts`), each printed for what it shows.
+- **Print BOTH planes fully** (structure, motifs, a contrasting accent): a thin or bare second plane reads as a blade.
+  The backs are printed too (`back: 'mirror'`, the kit's default for crosses): the walking camera sees them.
+- **Slot on the object's own axis** (the trunk, the post, the stem), and keep the base narrow where it meets the page
+  (motion bullet above).
+
+**Common objects** (each a cross; the main plane the front view, the second the side view or a variant):
+
+| Object | Main plane | Second plane | Notes |
+|---|---|---|---|
+| Round-crowned tree, blossom tree | crown lobes and trunk | the same outline, another leaf or flower print | the gallery's trees |
+| Conifer, pine, fir, juniper | stacked tiers | tiers offset by half a tier | snow caps on each tier on both planes |
+| Palm | curved trunk and frond crown | fronds reaching the other ways | trunk bands on both |
+| Cactus (saguaro) | trunk with arms one way | arms at other heights | flowers on both |
+| Giant mushroom, toadstool | cap and stem | the same, spots moved | or a crossed stem under a level cap disc |
+| Tent, tipi, yurt | the front with the door | the side profile | stripes or panels on both |
+| Signpost, fingerpost | post with arms pointing two ways | post with arms pointing the other two | each arm printed with a name |
+| Lamp post, lantern on a pole, totem | post and lamp or carving | the same | lit panes on both planes (`H.glowing`) |
+| Windmill | tower front with the door, the sails | tower side | sails turn on the main plane |
+| Rocket, satellite, robot, spaceship | front silhouette with its fins or arms | side silhouette with the others | |
+| Bottle, vase, jar, urn, chess piece (anything turned on a lathe) | the profile | the same profile | prints differ |
+| Snowman, scarecrow, statue | front view | side view | a figure with a face is a T, below |
+| Big flower, cattail, crystal cluster | head or shards one way | the other way | |
+| Coral, kelp, sea fan, branching plant | branches | branches the other way | a reef's trees |
+| Campfire, brazier, torch flame | flame tongues | other tongues | glowing panes; the cross keeps a fire round |
+| Floating things: balloon, paper lantern, cloud, planet | the round silhouette | the same | the cross stays round as the camera moves |
+| Fountain | basin front | side | plus a level disc for the water; a well or a round kiosk is a prism (section 7) |
+
+**Variants**
+- **T, not X, for figures with a face** (the hero, creatures that turn to the camera): the frontal card with a profile
+  card standing BEHIND it, not through it, so no edge line crosses the face (section 12).
+- **Cross plus level discs:** a cap, a tabletop, a round roof, a water surface or a tiered cake is a level disc on a
+  crossed stem or body.
+- **Stacked crosses:** a crossed trunk carrying a crossed crown turned another way (a great tree, a palm cluster), or
+  tiers that alternate their turn.
+- **Double cross** (two crosses 45 deg apart: four planes) for one big round showpiece seen from everywhere (the
+  great tree of a plaza, a fountain, a carousel); sparingly, four planes busy the silhouette.
+- **Fanned pair** (section 9): a front card and a darker mirrored rear copy, for things seen from one side only (a
+  hedge run, a far tree line, a backdrop); cheaper than a cross, flat from the side.
+
+**Where crossing gives a scene its volume**
+- Everything the hero walks around or the walking camera passes: the camera moves, so a flat card would turn
+  edge-on as he goes by; a cross never does.
+- The tall pieces in the sharp band (trees, posts, tents, landmarks): two planes throw a fuller, more readable shadow
+  and make the middle of the frame read as a space, not a stage set.
+- A wood, a grove, an orchard, a reef: crosses at varied turns read deep; all turned alike they read as flats.
+- Things in the air (balloons, lanterns, clouds, a bird on a perch): the cross keeps them round from every angle.
+- Not for low things (grass tufts, bushes, flowers, rocks, crates, critters): single cards facing the camera (+-14 deg;
+  the harness does it when `yaw` is omitted) or fans and clumps (section 9); from a high camera a low X reads as a
+  blade. Not for buildings and long walls: box folds (section 7), fences (section 9).
 
 ## 6. V-fold
 
 A long ridge as one plane is edge-on from the side and a flat wall from the front. Two half silhouettes meeting at
-an apex read from every side and from above.
+an apex read from every side and from above. The source game's dunes, drifts and ridges are V-folds; nested ridge
+flats (section 8, `H.stack`) are the other way to build hills and banks.
 
-- **From the default down-looking camera, dunes are layered ridge flats** (section 8): they read at once. A V-fold
-  reads as a tent there unless its long axis runs ACROSS the view.
 - Each wing is HALF the form: highest at the apex end and cut square there, so the pair reads as one dune or ridge
   folded down the middle. Second wing ~0.92 of the first's height.
-- Wings 24-30 deg off the long axis, ~4 % H gap at the apex. Long axis across the view; with the apex pointing away
-  from the camera (the V opening toward the viewer) it is the tent read above.
+- Wings 24-30 deg off the long axis, ~4 % H gap at the apex. The long axis runs ACROSS the view, the apex AWAY from
+  the camera and the opening toward it (a V with its apex toward the camera is a prow).
 - Close the mouth *(strongly advised)*: a third, lower card (0.4-0.6 of the height, 0.84 of the width) just inside
-  the open end, turned ~5 deg. Without it the V reads as two free shells or a row of arches and tents.
+  the open end, on the camera side, turned ~5 deg. Without it the V reads as two free shells or a row of arches and
+  tents.
+- Build (3D harness): `popup(pts, paint, { cross: 'quarter', angle })`, angle 120-130, from an outline highest at the
+  fold (a symmetric hill, a half-ellipse: `structures.md` section 3); with `yaw` omitted the harness turns the opening
+  toward the camera.
 - Crest: a sunlit strip glued along the top edge, thinning toward the low end. A lighter inner copy of the silhouette
   read as the mouth of an arch.
 - 2D: two wings in two tones 10-15 % apart (lit side, shade side), widths by the cosine of their turn, the crest strip
@@ -204,7 +267,9 @@ an apex read from every side and from above.
 
 ## 7. Box fold
 
-A volume that folds flat like the net of a paper model: reads as a solid house, closes into a flat print.
+A volume that folds flat like the net of a paper model: reads as a solid house, closes into a flat print. Any other
+plan (a flat-roofed block, a round tower, a silo, a tank, a kiosk, an L-shaped hall) is a prism:
+`prismFold(footprint, { h, roof })` in `paperkit-3d.js`, which flattens like a paper tube (`structures.md` section 4).
 
 | Panel | Hinge and fold |
 |---|---|
@@ -282,14 +347,14 @@ A dome or round hall built from one crossed pair reads as a star or a tent from 
 5-9 PARALLEL half-disc (or arch) cards stacked front to back, EACH ON ITS OWN HINGE on the page (one hinge for all
 sweeps the back slices through the page), the biggest in the middle, falling off toward the front and the back (scale
 ~0.8 / 0.93 / 1 / 0.95 / 0.85 front to back), spaced ~13 % of the radius apart; with no falloff the front slice hides
-the rest and it reads as one card. It reads as a solid dome from the side and from low views, folds flat as a stack,
-and the gaps between slices carry soft shadows. Print the ribs and panes on each slice; make the panes glow from
-inside with `P.glow`. Towers and tanks: the same idea with tall rounded rectangles; a ring of 2-3 slices plus a
-front facade card is enough for a capsule.
+the rest and it reads as one card. It reads as a solid dome from the side and from the default 40-55 deg camera (the
+3D harness's `H.dome(x, z, { r, h, n, paint })`), folds flat as a stack, and the gaps between slices carry soft
+shadows. Print the ribs and panes on each slice; make the panes glow from inside with `P.glow`. A ring of 2-3 slices
+plus a front facade card is enough for a capsule; towers and tanks are prisms (above).
 
-**From the default down-looking camera** slices read as a stack of plates. A dome or a mushroom cap seen from above is
-a faceted net (a star of 8-12 gores that folds down into the dome as it rises); a round stem or tower is a ring of 6-8
-panels that rise like petals.
+**Only for a camera near straight above**, where slices read as a stack of plates: a dome or a mushroom cap is a
+faceted net (a star of 8-12 gores that folds down into the dome as it rises), a round stem a ring of 6-8 panels that
+rise like petals.
 
 ### Lit windows, lamps, screens
 
@@ -307,35 +372,35 @@ Pop-up scenery is layered flats with air between them; parallel layers give dept
 
 - Layers 5-15 % of the object height apart; each layer 10-15 % darker going away from the light (or paler into haze
   with distance); every front layer shows its own thin cut edge (equal-tone layers vanish).
-- Hills: 3-5 curved cards ("sails"), the back one tallest, each nearer one lower and ~10-15 % lighter (stepped, never
-  alternating), plain silhouettes with a lighter glued crest band (`shape.hill` + the example `paintHill`). Fan the
-  rows +-5 and +-13 deg about a common yaw instead of exactly parallel so they read under rotation; a small strut on a
-  back face *(opt)*.
+- **Hills and nested landforms, in the middle ground too, not only at the far edge.** Hills, hillocks, banks (and
+  dunes, though the source game's are V-folds, section 6): 3-5 parallel curved cards ("sails", `H.stack` in the 3D
+  harness), the back one tallest, each nearer one lower and ~10-15 % lighter (or darker away from the light; stepped,
+  never alternating), ~0.14 H apart so the gaps read as shadow bands, plain silhouettes with a lighter glued crest
+  band (`shape.hill` + the example `paintHill`; the example scene's `hillock`). Fan the rows +-5 and +-13 deg about a
+  common yaw instead of exactly parallel so they read under rotation; a small strut on a back face *(opt)*. Rock
+  outcrops as 3-5 tall slanted cards in a tight cluster, each a lit face and a darker facet turned from the key
+  (`rockOutcrop`); reed beds of 3+ blade layers, conifers as crosses of stacked tiers (section 5). Without them all
+  the volume comes from boxes and single cards, the commonest remaining gap in round 7.
 - Sky things (sun, moon, clouds) only when the brief is literally a physical book (the one exception, `look.md`
   section 1): on paper stalks hinged to the page, so they rise and fold like everything else. The default camera
   looks down into the world and sees no sky.
-- Under the warm side key every layer casts a soft shadow on the one behind, and the gaps read as shadow bands.
+- Under the side key every layer casts a soft shadow on the one behind, and the gaps read as shadow bands.
 - **The ground stays flat.** In this style the page is the ground: height comes from nested parallel cards (hills,
-  banks, dunes) and clusters of slanted cards (outcrops), never from a raised block of terrain; a block with strata
-  on its face read as "a cake" or "a block of terrain" to a blind critic (round 8), with or without relief flats.
-  Where the brief has the hero walk up somewhere, build it open, as card construction: a deck on posts (a posts face
-  with the gaps cut down to the base), stairs of thin treads on stringers, a plank deck between side cards
-  (section 14). This holds for every subject: a cliff, a mesa, a crater
-  rim, a reef wall or a snow bank is nested cards and outcrops standing on flat print.
+  banks, dunes), V-folds (section 6) and clusters of slanted cards (outcrops), never from a raised block of terrain;
+  a block with strata on its face read as "a cake" or "a block of terrain" to a blind critic (round 8), with or
+  without relief flats. Where the brief has the hero walk up somewhere, build it open, as card construction: a deck
+  on posts (a posts face with the gaps cut down to the base), stairs of thin treads on stringers, a plank deck between
+  side cards (section 14). This holds for every subject: a cliff, a mesa, a crater rim, a reef wall or a snow bank is
+  nested cards and outcrops standing on flat print.
 - **Built masonry only, and in relief.** A raised block with a printed face is allowed only for masonry the brief
   names (a quay wall, a stage front, a plinth). Its face reads as paper when 2-3 stepped flats stand in front of it,
   each lower (~0.8, then ~0.55 of the face height), ~0.06-0.08 H nearer and ~10 % darker, with torn or scalloped tops;
   one extruded block with a print on it reads as CG (round 6 critic). Relief in front of a walkable face is a wall to
   the walk except where stairs or a ramp come down (`built-ground.js` `terrace({ relief, gap })`).
-- **Nested landforms in the middle ground, not only at the far edge.** Hillocks, dunes, banks, reed beds: 3-5
-  parallel curved cards, the back one tallest, each nearer one lower and ~10-15 % lighter (or darker away from the
-  light), ~0.14 H apart so the gaps read as shadow bands (the example scene's `hillock`); rock outcrops as 3-5 tall
-  slanted cards in a tight cluster, each a lit face and a darker facet turned from the key (`rockOutcrop`); reed beds
-  of 3+ blade layers, conifers of stacked tiers. Without them all the volume comes from boxes and single cards, the
-  commonest remaining gap in round 7.
-- **Open assemblies.** Stalls, wells, carts, gazebos, docks, scaffolds, swings: separate cards with air between them
-  (post cards, a counter card, an awning card, a roof V, wheel discs), each on its own hinge or riding one frame, so
-  the camera sees through and under them. A closed box with the assembly printed on it reads as a crate.
+- **Open assemblies.** Stalls, wells, gazebos, carts, docks, scaffolds, swings: a box or prism body where the thing
+  has one (section 7: a counter, a well's drum, a cart bed), with the posts, the awning and the roof as separate
+  cards with air between them (a roof V, wheel discs), each on its own hinge or riding one frame, so the camera sees
+  through and under them. A closed box with the posts, awning and roof only printed on it reads as a crate.
 - 2D: rows of cards at different depths in the pitched view (section 2), each casting onto the ground and the row
   behind. Only in a parallax side-scroller the brief asks for: per layer a depth, a parallax factor, a tone step, a
   haze step and a drop shadow whose offset and blur grow with the gap to the layer behind.
@@ -346,15 +411,16 @@ Pop-up scenery is layered flats with air between them; parallel layers give dept
 |---|---|---|
 | Fan | the piece plus a rear copy | rear 1.14x taller, tone x0.88, mirrored, ~0.1 H behind, shifted 16-24 % of the width, +-3 deg |
 | Clump | 2-3 DIFFERENT pieces (bush, flowers, tuft, reeds, rock) | rear piece; front piece ~0.17 H ahead and shifted sideways; an L-return square to them off one end (none next to water) |
-| Cluster | 4-8 DIFFERENT pieces anchored to something: a house corner, a post, a tree foot, a pond rim, a path bend (a door scene may be 2-3) | biggest at the back; each next 9 % smaller, ~0.12 H nearer the camera, alternating sides by ~0.23 H + 0.08 H per pair; group yaw 45 +- 6-8 deg; back pieces 5 % darker per step |
+| Cluster | 4-8 DIFFERENT pieces anchored to something: a house corner, a post, a tree foot, a pond rim, a path bend (a door scene may be 2-3) | biggest at the back; each next 9 % smaller, ~0.12 H nearer the camera, alternating sides by ~0.23 H + 0.08 H per pair; each piece faces the camera +-14 deg; back pieces 5 % darker per step |
 | Zig-zag fence | sections end to end on the diagonals | inner joints pushed sideways by 0.2 x the section length (~11 deg, alternating) so no two sections share a plane; paddocks as diamonds |
 
 - From any allowed view a group shows a layered pair plus a return, never a single flat slash, and reads as one mass
   with depth. Between groups, low fillers (tufts, stones, flowers), varied, keep the sharp band packed (measure.py
-  barePct <= ~55); the open ground is designed and mostly outside the band: paths, water, a few clearings
-  (`worlds.md` section 8).
+  barePct <= ~55); the open ground is designed and mostly outside the band: the leading line, any water, a few
+  clearings (`worlds.md` section 8).
 - Kit: `clusterLayout(x, z, { n, size, seed, spread })` in `paperkit-3d.js` returns the cluster positions, scales and
-  yaws above; feed it 4-8 different pieces of your world (a bush, a rock, a tuft, flowers: whatever your subject's are).
+  yaws above (+-14 deg about yaw 0, which faces the template's camera); feed it 4-8 different pieces of your world (a
+  bush, a rock, a tuft, flowers: whatever your subject's are).
 - Layer counts that read: tuft 2, flower clump 3, bush 3, tree 2 crossed cards + print, pine 4-5 tiers, animal 2-3,
   cottage box + 4-6, prop 2-4. At most ~5 filler cards per module.
 - Rejected: small props as a card plus a 0.72x crossed copy (an X blade from above), thin-stemmed reeds and flowers
@@ -388,21 +454,26 @@ Pop-up scenery is layered flats with air between them; parallel layers give dept
 **The player is a small 3D paper model, not a card.** The baseline for any game (unless the brief asks otherwise) is a
 figure of ~10-20 cards that reads from the front, the side and the back and turns to face the way it walks, like the
 source game's player (a glTF model of folded and cut paper: a torso with real depth, a head, two legs and two arms
-cut as profile cards on hip and shoulder pivots, a carried item hanging from one hand). A single card reads as a
-sticker beside built pieces (round 6 critic), and a stack of frontal cards that mirrors to turn still reads flat
-(round 8). Design the character for your subject (a diver, a courier, a robot, a fox); the construction is the style:
+cut as profile cards on hip and shoulder pivots). A single card reads as a sticker beside built pieces (round 6
+critic), and a stack of frontal cards that mirrors to turn still reads flat (round 8). Design the character for your
+subject (a diver, a courier, a robot, a fox); the construction is the style:
 - **Every part is a T of two cards:** a frontal card and a profile card standing right behind it (a cross puts an
   edge line through the face; behind, the front hides it while the side view shows depth), in slightly different
-  tones so the build reads as construction. Volumes may also be box folds or level discs.
+  tones so the build reads as construction. Keep each profile card's top below its frontal card's top: a bare head's
+  side card that rises past the face pokes up as an "ear" from a high camera (a hat or hair hides it). Volumes may
+  also be box folds or level discs.
 - **The model faces +z and yaws** (the harness turns its group toward the way it goes: `three-js.md` section 1); its
-  back is printed too (hair, a plain coat back, a pack).
+  back is printed too (hair, a plain coat back).
 - **Legs (or wheels, flippers, tracks) on hip pivots** that swing forward and back about the hip's x axis with the
-  distance walked; arms on shoulder pivots swinging opposite; an arm carrying something swings less (x0.2-0.4) and
-  the carried item hangs from that hand (`motion.md` section 8).
+  distance walked; arms on shoulder pivots swinging opposite; if the design carries something, that arm swings less
+  (x0.2-0.4) and the item hangs from the hand (`motion.md` section 8).
 - **A body** with costume or surface detail and soft painted shading; **a head** ~1.3x natural size with a face that
-  reads at play distance; **headgear and props** only as the character's own design has them (a robot needs no straw hat; blind tests
-  copied the example's brim onto one), each as its own T or disc;
-  **what it carries on the back** pokes out beside and above the shoulders.
+  reads at play distance and in every mood: a skin or face tone a step lighter than you would paint it by day, dark
+  features on a pale surround, and at dusk and night a practical near him (`H.lamp` pools along his route, or a light
+  he carries if his design has one; a tester's dusk fisher lost his face); **headgear and carried things** only if
+  the character's own design has them (never a default pack, bedroll or lantern; a robot needs no straw hat: blind
+  tests copied the example's brim onto one), each as its own T or disc; a load on the back pokes out beside and above
+  the shoulders.
 - **Colours that contrast** with the ground and the dressing (hue and value); chunky toy-like proportions; it stands
   in the sharpest rows, where a nearer card may overlap it a little. Size it ~0.4-0.5 of the world's tallest common
   kind.
@@ -416,11 +487,12 @@ The example scene's `heroDoll` (a gardener, 17 cards) is one worked model; write
 
 A flat card seen edge-on is a knife-thin sliver, the most common "this is CG" tell.
 
-- Small single cards stand on the diagonals: `yaw = round((yaw - 45) / 90) * 90 + 45 +- 11 deg`; they show ~70 % of
-  their width in every 90 deg rotation (clusters 45 +- 6 deg: 63-78 %). Never on a module axis. A 30/60 deg split for
-  clusters was rejected: every second one became a thin slash.
-- Crossed pairs at +33 / -57 deg to the line of sight (up to ~20 deg off the camera axis near the frame edges,
-  section 5); V-fold wings 24-30 deg off the axis; fence runs zig-zag.
+- Small single cards face the camera +-14 deg (`structures.md` section 1; the harness does it when `yaw` is omitted,
+  `clusterLayout`'s yaws do the same). The source's diagonal rule served a camera that turned in 90 deg steps; no
+  camera here does.
+- Crosses turn their main plane ~24 deg off facing the camera, either sign (section 5; the harness does it when `yaw`
+  is omitted); V-fold wings 24-30 deg off the long axis, the opening toward the camera (section 6); fence runs
+  zig-zag.
 - Target: the minimum silhouette ratio over all allowed views >= 0.6 (most pieces reached >= 0.77). Measure it.
 - A piece that cannot read from every side (hill rows with dark struts, a boathouse that would stand between camera
   and water) gets its allowed rotations restricted in the generator.
@@ -443,7 +515,7 @@ card.matrix = T(hinge) * RotY(turn * k) * T(-hinge) * card.matrix;   // RotY(+a)
 ```
 - Jitter +-14 deg seeded per card; re-pose when the camera's right vector changes by more than ~0.015.
 - Collision, placement and anchors must use the same drawn transform ("the walk field is what is drawn").
-- Free-orbit cameras cannot use it; rely on authored crosses, diagonals and V-folds.
+- Free-orbit cameras cannot use it; rely on authored crosses and V-folds.
 - The source also scaled small turned cards 1.15-1.3x with the same fade; author them at the right size instead.
 - Rejected: tilting an upright card toward the camera instead of turning it (its face went into shade and backs
   showed; the 2D forward fold of section 2 is about how a card rises, not its rest pose); tipping cards aside for
@@ -470,10 +542,11 @@ assemble: write your subject's own.
 | Houses, huts, domes, tents you enter | box folds with a door opening cut through the front (`boxFold({ holes: { front } })`), or a cut to an interior scene; never a flat facade the hero walks through; walk walls as in Under and into | `boxFold` (section 7); built-ground.js `boxHouse` is a closed cottage (its door is printed) |
 | Gorge, chasm, ravine, canyon | the page cannot be cut and the ground stays flat: print the gully (its floor, the stream, the walls going down) on the page, line both rims with rock outcrops and nested sails (section 8) and cross it on an open bridge; `walk.block` the gully except where a deck crosses it | built-ground.js `bridge` |
 | Rope bridge, suspension bridge | it sags: a half-deck hinged at each bank's edge (an outer panel dipping ~10 deg, an inner one bent back to ~3 deg, ~0.1 H of sag), rope side cards (a hand rope and hangers, cut as a comb) leaning out ~14 deg, lashed posts at both ends; folded, each half lies on its own bank and swings over as the world opens; `heightAt` follows the sag | your own, on `makeCard` + `hinge` |
-| Market stalls, wells, carts, gazebos | open assemblies (section 8): post cards, a counter card, an awning or roof card; a part that tips into place after its stall stands (an awning) is a second, later flap on the same frame, which reads as a mechanism | your own |
+| Market stalls, wells, carts, gazebos | open assemblies (section 8): a box or prism body with the posts, an awning and a roof as separate cards; a part that tips into place after its stall stands (an awning) is a second, later flap on the same frame, which reads as a mechanism | your own |
 | Fences, walls, hedges that enclose | zig-zag runs of cards with posts (section 9); the walk field blocks them | `walk.wall(x0, z0, x1, z1, { r })` per run |
 | Water, paths, roads, fields, plazas | printed into the page, never standing cards; water blocks walking except where a deck crosses it | `walk.block(fn)` |
-| Backdrop hills, mountains, skylines | layered flats along the far edge, never walked on; a hill the brief walks over stays flat ground between nested hill cards, any climb built open (a boardwalk on posts, stairs on stringers, a lookout deck) | `layeredCard` |
+| Backdrop hills, mountains, skylines | layered flats along the far edge (the 3D harness's `H.groundAt(0, 0.95)` is where the frame's top meets the page), never walked on; a hill the brief walks over stays flat ground between nested hill cards, any climb built open (a boardwalk on posts, stairs on stringers, a lookout deck) | `layeredCard` |
+| A slope the brief names (steps climbing to a temple, a terraced hillside) | built, never sculpted: stepped terraces of masonry (`terrace`) or decks on posts, with steps between them; the page stays flat, backdrop flats show the mountain beyond | `terrace`, `stairs`, `platform` |
 
 **The walk-surface contract** (every construction the hero walks on): `group.userData.walk = { frame, heightAt(x, z) }`.
 `heightAt` takes a point in the coordinates of `frame` (optional: without it, the group's own frame, 0 = its base on
@@ -495,13 +568,14 @@ beneath a pier), do not `walk.add` the deck over it (or return null inside the o
 
 - **Roofed walk-throughs** (covered bridges, arcades, tunnels, a hollow log): from a camera 40-55 deg up the roof hides
   the hero inside. Keep the camera-side wall a low rail or an open gallery of posts and its roof slope short or high
-  at the eave, and cut windows through the near side (`holes`); if he must still be seen inside, glide the camera a
-  little lower (toward 40 deg) and toward an open end while he is in. Never a cutaway, a fade or a roof that moves
-  aside for him (scenery never bends for gameplay: `look.md` section 12).
+  at the eave, and cut windows through the near side (`holes`). The 3D harness's sight assist lowers the lens toward
+  40 deg when a roof hides him (`motion.md` section 10), which shows him at the open ends, not deep inside: a tester's
+  closed covered bridge hid its hero for a fifth of the crossing (`__papercraft.sight()` finds it). Never a cutaway, a
+  fade or a roof that moves aside for him (scenery never bends for gameplay: `look.md` section 12).
 - **Stairs along a deck's side** (an outside staircase): yaw = the deck's yaw + 90 deg, positioned through the deck
   frame (`deck.localToWorld`), and the deck's wall band left open where the stair arrives.
 - **Spiral stairs** (around a stem, a tower or a tree): thin plank treads fanned around the stem, each on its own
-  bracket or post card, rise <= ~1/8 H, each tread's walk height its own; the stem is the ring of panels of section 7.
+  bracket or post card, rise <= ~1/8 H, each tread's walk height its own; a stem or tower is a prism (section 7).
 
 The worked examples are in `assets/examples/built-ground.js` (three.js): read them for the construction, the
 fold-flat order and the walk surface, then build your subject's own (a boardwalk, a pier, a temple stair, a gantry).
@@ -514,9 +588,9 @@ What reads as paper in them, and what the critics marked down:
   ramps and decks connect without a gap.
 - A walkable deck never leans with its hinge: measure the walk height on the level deck frame (`walk.frame`), and stand
   walkable boxes with no hand-placed lean.
-- Fit the hero: a deck at least ~1.5x as wide as the hero card, or his card visibly crosses the parapets; the walk
-  `radius` is half his FEET span (~0.15 H; 0.6 in the 3D template for its 3.6-unit hero), not half the card; treads
-  about 2x that radius deep (`stairs()`: a 1.1 run plus its nosing), rise <= `step`.
+- Fit the hero: a deck at least ~1.5x as wide as the hero's body (shoulders and swinging arms), or he visibly
+  crosses the parapets; the walk `radius` is half his FEET span (~0.15 H; 0.6 in the 3D template for its 3.6-unit
+  hero), not half his body; treads about 2x that radius deep (`stairs()`: a 1.1 run plus its nosing), rise <= `step`.
 - A structure of several cards (bridge + landings, stairs + span) rises as ONE: every part reads the same p (or one
   spring with staggered sub-ranges), never separate springs that leave a span lying flat under a raised landing.
 
@@ -527,8 +601,8 @@ walkable surface (a three.js group carrying `userData.walk.heightAt(x, z)` in it
 plain `{ heightAt(x, z) }` in world space for 2D), `walk.block((x, z) => inWater)`, `walk.solid(x, z, r, { base })`
 for houses, trees, rocks and wells (base = the height they stand at, so a temple ON a raised deck blocks and a rock
 UNDER a bridge does not); each frame `walk.move(pos, dx, dz)` slides along blockers and steps up or down at most
-`step`; `radius` keeps every foot around the centre (eight points) on a surface within one step, so the hero card
-never pokes over a parapet or a deck edge. Put his feet at `pos.y` and let the camera focus follow his height.
+`step`; `radius` keeps every foot around the centre (eight points) on a surface within one step, so the hero never
+pokes over a parapet or a deck edge. Put his feet at `pos.y` and let the camera focus follow his height.
 `walk.route(pos, points)` walks a list of waypoints through the same rules (never a teleport): the scripted check.
 When he sticks it reports `blockedBy`, and `walk.why(x, z, y)` names what stops him at a point (a wall by its name, a
 solid, a block, a step too high, a foot on one of these). The templates' `?walk` and `__papercraft.walkPath(points)`

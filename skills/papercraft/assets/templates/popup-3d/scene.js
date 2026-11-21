@@ -5,6 +5,7 @@ import * as P2 from 'papercraft/lib/paperkit-2d.js';
 import { makeCard, layeredCard, clusterLayout, platform } from 'papercraft/lib/paperkit-3d.js';
 import * as EX from 'papercraft/examples/countryside.js';
 import { boxHouse, bridge } from 'papercraft/examples/built-ground.js';
+import { createLife } from 'papercraft/lib/paper-life.js';
 import { createHarness } from './harness.js';
 
 // ---- 1. palette: THIS WORLD'S ONLY (autumn countryside: warm orange / rust / ochre lead; sage, teal and cream
@@ -16,8 +17,13 @@ const C = {
   trunk: '#74452a', wall: '#ecd4b0', roof: '#c8513b', roofB: '#9c5636', roofC: '#b5683a', window: '#ffc45a', stone: '#b7a386',
   wood: '#a8683a', hay: '#dcb055', ink: '#3a2412', cloak: '#4f6a8a', hat: '#e3b04b', door: '#3f7a70', earth: '#b98a58', turf: '#8f9c4c', meadow: '#b3aa6a',
 };
-const H = createHarness({ ground: C.ground, view: { pitch: 47, dist: 66, target: [2, 1.5, -6] }, bounds: { x0: -64, x1: 64, z0: -62, z1: 38 }, play: true });
-const { popup, walk, flags } = H;
+// one diorama: the hero walks anywhere the overview shows (walkArea), the camera drifts a few units with him (camBox),
+// and the fill covers every frame that walk can bring (H.inReach), so he never finds bare page
+const H = createHarness({ ground: C.ground, view: { pitch: 47, dist: 66, target: [2, 1.5, -6] }, bounds: { x0: -64, x1: 64, z0: -62, z1: 38 }, play: true,
+  walkArea: { x0: -18, x1: 22, z0: -24, z1: 7 }, camBox: { x0: -1, x1: 5, z0: -8, z1: -4 } });
+const { walk, flags } = H;
+let RES = 1;   // print resolution of the fill (popup res): the ring past the overview prints a little coarser
+const popup = (pts, paint, o = {}) => H.popup(pts, paint, { res: RES, ...o });
 
 // ---- 2. the printed ground: watercolour washes, torn-paper river, path and fields, marks gathered in drifts ---------
 // THIS WORLD'S ground, not a recipe: replace it with your world's own floor and features (deck plates, sand ripples,
@@ -78,7 +84,7 @@ H.printGround(({ g, ppu, X, Z, rnd, washes, torn, band, ribbon, drifts }) => {
 // ~0.5-0.9x the hero, houses ~1.7x. Each kind is a function returning [outline, print].
 let rnd = P2.rng(101);                // one seeded stream per section: an edit in one section never reshuffles another
 const D = P2.draw2, between = (a, b) => a + rnd() * (b - a);
-const crossYaw = () => (rnd() < 0.5 ? -1 : 1) * (0.5 + rnd() * 0.16);   // a slotted cross: neither plane edge-on to the camera
+// slotted crosses (trees, pines) are placed without a yaw: the harness turns them as the source game does
 const tuft = (w, h, n) => P2.shape.mound(rnd, { w, h, lobes: n, depth: 0.42 }); // rounded blades: pointed ones read as combs
 const dome = (w, h, n = 24) => { const p = [[-w / 2, 0], [w / 2, 0]]; for (let i = 1; i < n; i++) { const a = (i / n) * Math.PI; p.push([Math.cos(a) * w / 2, Math.sin(a) * h]); } return p; };
 const mound = (w, h, lobes = 7, depth = 0.18) => P2.shape.mound(rnd, { w, h, lobes, depth }); // flat base: stands on its fold
@@ -118,7 +124,7 @@ function bushStack(x, z, { yaw = 0, scale = 1, sway = 0.6, parent = null, order 
   const node = layeredCard([
     { pts: P2.roughen(mound(w, w * 0.42, 6, 0.2), rnd), paint: EX.paintBush({ leaf: P2.shade(col, -0.1) }, { bands: 0, motifs: false, grass: false }) },
     { pts: P2.roughen(mound(w * 0.74, w * 0.3, 5, 0.14), rnd), paint: EX.paintBush({ leaf: inner, stem: P2.shade(col, -0.35) }, { bands: 0 }), z: 0.4 },
-  ], H.cardOpts(x, z, scale, parent));
+  ], H.cardOpts(x, z, scale, parent, RES));
   return popup(null, null, { node, height: w * 0.42, x, z, yaw, scale, sway, parent, order });
 }
 // a nested landform for the MID-ground (the shipped frames get height from nested cards and rocks, never from a raised
@@ -128,7 +134,7 @@ function hillock(x, z, { w = 4.2, h = 4.6, n = 4, col = C.hill, yaw = 0, lean = 
   const layers = Array.from({ length: n }, (_, k) => ({
     pts: P2.roughen(peak(w * (1 - k * 0.1), h * (1 - k * 0.18), lean + (k % 2 ? 0.08 : -0.04)), rnd),
     paint: EX.paintHill({ ground: P2.shade(col, -0.2 + k * 0.12), accent: '#f3e6c8', ink: C.ink }), z: k * 0.5 }));
-  return popup(null, null, { node: layeredCard(layers.map((L, k) => ({ ...L, pts: L.pts.map(([px, py]) => [px + (k - 1) * w * 0.12, py]) })), H.cardOpts(x, z)), height: h, x, z, yaw, solid: w * 0.45 });
+  return popup(null, null, { node: layeredCard(layers.map((L, k) => ({ ...L, pts: L.pts.map(([px, py]) => [px + (k - 1) * w * 0.12, py]) })), H.cardOpts(x, z, 1, null, RES)), height: h, x, z, yaw, solid: w * 0.45 });
 }
 // a rock outcrop: 3-5 tall slanted cards in a tight cluster, each a lit face and a darker facet turned from the key
 const paintSpire = (col) => (P) => {
@@ -148,6 +154,9 @@ const riverDist = (x, z) => { let d = 1e9; for (let s = -7; s <= 7; s += 0.25) d
 const pathDist = (x, z) => { let d = 1e9; for (let s = -5; s <= 5; s += 0.25) d = Math.min(d, Math.hypot(x - pathX(z + s), s)); return d; };
 const keepOut = [], mark = (x, z, r) => keepOut.push([x, z, r]);
 const free = (x, z, m = 0) => riverDist(x, z) > 3.4 + m && pathDist(x, z) > 1.7 + m && keepOut.every(([hx, hz, r]) => Math.hypot(x - hx, z - hz) > r + m);
+// what the world's life needs to know (section 6): chimneys, flower beds, creatures and what each one does
+const LIFE = { chimneys: [], flowers: [], floaters: [], creatures: [] };
+const BEHAVIOUR = { hen: 'peck', fox: 'shy', cat: 'pet' };
 // a group: 4-8 DIFFERENT pieces tight together (a door scene may be 2-3), biggest at the back; every member needs room
 const BACK_TO_FRONT = ['bush', 'shrub', 'flowers', 'rock', 'fence', 'barrel', 'tuft', 'stump', 'mushroom', 'fox', 'cat', 'hen'];
 function group(x, z, kinds, size = 1, ok = free) {
@@ -157,7 +166,9 @@ function group(x, z, kinds, size = 1, ok = free) {
     if (!ok(c.x, c.z, 0.2)) return;
     if (kinds[i] === 'bush') { bushStack(c.x, c.z, { yaw: c.yaw, scale: c.scale * size }); return; }
     const [pts, paint] = K[kinds[i]]();
-    popup(pts, paint, { x: c.x, z: c.z, yaw: c.yaw, scale: c.scale * size, sway: ['shrub', 'tuft', 'reeds', 'flowers'].includes(kinds[i]) ? 0.6 : 0 });
+    const h = popup(pts, paint, { x: c.x, z: c.z, yaw: c.yaw, scale: c.scale * size, sway: ['shrub', 'tuft', 'reeds', 'flowers'].includes(kinds[i]) ? 0.6 : 0 });
+    if (BEHAVIOUR[kinds[i]]) LIFE.creatures.push([h, BEHAVIOUR[kinds[i]]]);
+    if (kinds[i] === 'flowers') LIFE.flowers.push([c.x, c.z]);
   });
 }
 const houseColors = (roof) => ({ wall: C.wall, roof, window: C.window, door: C.door, ink: C.ink });
@@ -256,9 +267,29 @@ const heroDoll = () => {
 // ---- 4. ?test: the material on a few cards under the final light and lens (workflow step 2) ----------------------
 if (flags.TEST) {
   { const doll = heroDoll(); H.setHero(popup(null, null, { node: doll, height: 3.1, x: 2, z: -4, sway: 0.2, scale: 1.25 }), { stride: doll.userData.stride }); }
-  popup(...K.tree(), { x: -3, z: -8, cross: true, yaw: crossYaw(), sway: 0.8 }); bushStack(6.5, -6, {}); popup(...K.rock(), { x: -1, z: -2.5, yaw: -0.2 });
+  popup(...K.tree(), { x: -3, z: -8, cross: true, sway: 0.8 }); bushStack(6.5, -6, {}); popup(...K.rock(), { x: -1, z: -2.5, yaw: -0.2 });
   H.glowing(popup(null, null, { node: boxHouse({ w: 4.8, d: 3.8, wallH: 3.4, roofH: 2.5, colors: houseColors(C.roof), paper: H.paper, seed: 79 }), height: 5.9, x: 9, z: -11, yaw: -0.3 }).group);
 } else buildWorld();
+
+// ---- 6. a living world (references/motion.md section 12): THIS world's weather and creatures, chosen for an autumn
+// countryside: leaves falling in the trees' own colours, a few birds crossing above the treetops, butterflies at the
+// flower beds, smoke from the chimneys, cloud shadows, ducks drifting on the water, hens that peck and scatter, a fox
+// that bounds away from the hero, cats that wander and nap. Another brief picks its own (snow, petals, rain and mist,
+// dust and gusts, bubbles and fish...), in its own colours: never this list by default.
+if (!flags.TEST) {
+  const life = createLife({ scene: H.scene, camera: H.camera, heroHeight: H.heroHeight, seed: 41, wind: [0.94, 0.34] });
+  life.fallers({ count: 60, cut: 'leaf', colors: [C.leafA, C.leafB, C.leafC, '#a8452a'], size: [0.2, 0.3], land: 9 });
+  life.flock({ size: 5, height: 3.4, colors: ['#f6f1e6', '#e9e2d4'] });
+  life.flyers({ count: 8, colors: ['#fff6e0', '#f6c64a', '#ef8a3c'], anchors: LIFE.flowers.slice(0, 8), roam: 1.4 });
+  life.puffs({ at: LIFE.chimneys, perEmitter: 3, life: 4.5, rise: 0.45, size: [0.2, 0.45], colors: ['#f3e8d2', '#ece0c8'] });   // paper discs with a cut spiral, just above the chimney
+  life.cloudShadows({ count: 4 });
+  for (const [h, roam] of LIFE.floaters) life.critter(h.group, { behaviour: 'float', roam });
+  for (const [h, behaviour] of LIFE.creatures) life.critter(h.group, { behaviour, hero: H.hero.group.position, walk: H.walk, roam: 1.2 });
+  life.setNight({ night: 1, dusk: 0.5 }[flags.MOOD] ?? 0);   // butterflies sleep, fewer birds, no smoke at night
+  life.reset(H.target);
+  H.onStep((t, dt) => life.update(dt, H.target));
+  H.onRestart(() => life.reset(H.target));
+}
 
 // ---- 5. the world: landmarks and built ground by hand, then the fill ------------------------------------------------
 function buildWorld() {
@@ -267,7 +298,9 @@ function buildWorld() {
   // the hamlet: box-fold houses (gables open first, then the roof), a well, life at the doors
   const homes = [[at(-11, 5.5), { w: 5.4, d: 4.2, wallH: 3.7, roofH: 2.7 }, C.roof, 71, -0.25, 3.4, 4.4], [at(-4.5, 7), { w: 4.2, d: 3.6, wallH: 3.1, roofH: 2.3, windows: 1 }, C.roofB, 73, -0.5, 2.9, 3.8], [at(-17.5, 6.5), { w: 4.8, d: 3.8, wallH: 3.4, roofH: 2.5 }, C.roofC, 79, 0.2, 3.1, 4]];
   for (const [[x, z], dims, roof, seed, yaw, solid, keep] of homes) {
-    const h = popup(null, null, { node: boxHouse({ ...dims, colors: houseColors(roof), paper: H.paper, seed, print: H.cardOpts(x, z) }), height: dims.wallH + dims.roofH, x, z, yaw, solid });   // print quality follows the lens
+    const node = boxHouse({ ...dims, colors: houseColors(roof), paper: H.paper, seed, print: H.cardOpts(x, z) });
+    const h = popup(null, null, { node, height: dims.wallH + dims.roofH, x, z, yaw, solid });   // print quality follows the lens
+    if (node.userData.chimneyTop) LIFE.chimneys.push(node.userData.chimneyTop);
     H.glowing(h.group); H.lamp(x + Math.sin(yaw) * 2.6, 2.2, z + Math.cos(yaw) * 2.6, 1, 11); mark(x, z, keep);   // a warm pool at the door at dusk
   }
   // a small scene beside each door (2-3 different pieces, never the same set twice): a home reads as lived in
@@ -294,7 +327,7 @@ function buildWorld() {
   }
   { const z = bz + 4, [x] = at(z, 2.2); popup(...K.sign(), { x, z, yaw: -0.4 }); mark(x, z, 1.2); }
   walk.block((x, z) => riverDist(x, z) < 2.8);                         // the water blocks the walk except on a deck
-  for (const [z, dx, yaw, sc] of [[-11, -0.8, 0.5, 1.0], [-9.5, 0.6, -0.35, 0.85]]) popup(...K.duck(), { x: riverX(z) + dx, z, yaw, scale: sc });   // twins vary in size and turn
+  for (const [z, dx, yaw, sc] of [[-11, -0.8, 0.5, 1.0], [-9.5, 0.6, -0.35, 0.85]]) LIFE.floaters.push([popup(...K.duck(), { x: riverX(z) + dx, z, yaw, scale: sc }), 0.3]);   // twins vary in size and turn
   // the pond and its jetty: an OPEN construction (a posts face, a plank deck, a posts support: platform() with the
   // deck's walk surface), low over the water, reached from the bank; the water blocks the walk everywhere else.
   {
@@ -310,7 +343,7 @@ function buildWorld() {
     for (const dx of [-JW / 2 + 0.2, -JW / 2 + 1.4]) popup(posts(0.18, 1.1), wood(1, true), { parent: jetty.userData.deck, x: dx, z: 0.05, order: o });   // mooring posts
     popup(...K.boat(), { x: jx - JW / 2 + 0.6, z: jz + 1.5, yaw: 0.25, scale: 1.3, sway: 0.35 });
     for (const [a, r] of [[2.3, 1.02], [2.9, 1.04], [3.9, 1.0], [4.6, 1.03], [5.6, 1.05]]) popup(...K.reeds(), { x: POND.x + Math.cos(a) * POND.rx * r, z: POND.z + Math.sin(a) * POND.rz * r, yaw: (rnd() - 0.5) * 0.6, sway: 0.7 });
-    popup(...K.duck(), { x: POND.x - 2.6, z: POND.z + 1.4, yaw: 0.65, scale: 1.12 });
+    LIFE.floaters.push([popup(...K.duck(), { x: POND.x - 2.6, z: POND.z + 1.4, yaw: 0.65, scale: 1.12 }), 0.5]);
     walk.block((x, z) => inPond(x, z, 0.98));
     mark(POND.x, POND.z, Math.max(POND.rx, POND.rz) * 1.08);
   }
@@ -329,7 +362,8 @@ function buildWorld() {
   const doll = heroDoll(), hero = popup(null, null, { node: doll, height: 3.1, x: pathX(3) + 0.2, z: 3, sway: 0.2, scale: 1.25 }); H.setHero(hero, { stride: doll.userData.stride });
   { const [x, z] = at(6.5, 3); popup(...K.bench(), { x, z, yaw: -0.3 }); mark(x, z, 2.2); mark(pathX(3), 3, 2.4); }
 
-  // the fill: a slow noise decides woods (high), groups (middle) and clearings (low), only where the camera can see
+  // the fill: a slow noise decides woods (high), groups (middle) and clearings (low), only where the camera can see:
+  // first the overview (inFrame), then the ring past it that the walking camera can bring (inReach minus inFrame)
   rnd = P2.rng(202);
   const ph = [rnd() * 6.28, rnd() * 6.28, rnd() * 6.28, rnd() * 6.28];
   const lush = (x, z) => 0.5 + 0.24 * Math.sin(x * 0.12 + ph[0]) * Math.sin(z * 0.14 + ph[1]) + 0.16 * Math.sin(x * 0.21 + z * 0.15 + ph[2]) + 0.1 * Math.sin(x * 0.05 - z * 0.31 + ph[3]);
@@ -340,30 +374,36 @@ function buildWorld() {
   // tall pieces in FRONT of the subject hide it in a down-looking view: keep a low-dress corridor before the hero
   const [hx0, hz0] = [hero.group.position.x, hero.group.position.z];
   const corridor = (x, z) => z > hz0 - 1 && z < hz0 + 16 && Math.abs(x - hx0) < 7 + (z - hz0) * 0.35;
-  for (let gz = -46; gz <= 18; gz += 3.1) for (let gx = -46; gx <= 46; gx += 3.1) {
+  const fillGroups = (see) => { for (let gz = -46; gz <= 18; gz += 3.1) for (let gx = -46; gx <= 46; gx += 3.1) {
     const x = gx + (rnd() - 0.5) * 2.6, z = gz + (rnd() - 0.5) * 2.6, l = lush(x, z);
-    if (!H.inFrame(x, z, 0.12, 4) || l < 0.26 || placed.some(([px, pz]) => Math.hypot(x - px, z - pz) < 3.0)) continue;
+    if (!see(x, z, 0.12, 4) || l < 0.26 || placed.some(([px, pz]) => Math.hypot(x - px, z - pz) < 3.0)) continue;
     placed.push([x, z]);
     if (l > 0.55 && free(x, z, 1.6) && !corridor(x, z) && trees.every(([tx, tz]) => Math.hypot(x - tx, z - tz) > 4.8)) {   // canopies never stack
       trees.push([x, z]);
-      if (rnd() < 0.3) popup(...K.pine(), { x, z, cross: true, yaw: crossYaw(), sway: 0.5 });
-      else popup(...K.tree(), { x, z, cross: true, yaw: crossYaw(), sway: 0.8 });
+      if (rnd() < 0.3) popup(...K.pine(), { x, z, cross: true, sway: 0.5 });
+      else popup(...K.tree(), { x, z, cross: true, sway: 0.8 });
     } else if (free(x, z, 1.0)) group(x, z, kindsFor(4 + Math.floor(rnd() * 4)), 1.15);   // groups of 4-7 different pieces
-  }
+  } };
+  fillGroups(H.inFrame);
   // small fillers between the groups (tufts, flowers, mushrooms, stones), never in the clearings: the sharp band of the
   // shipped frames is ~45-55 % open ground (measure.py barePct)
-  for (let gz = -30; gz <= 12; gz += 2.0) for (let gx = -40; gx <= 40; gx += 2.0) {
+  const fillSmall = (see, z0 = -30, x0 = 40) => { for (let gz = z0; gz <= 12; gz += 2.0) for (let gx = -x0; gx <= x0; gx += 2.0) {
     const x = gx + (rnd() - 0.5) * 1.6, z = gz + (rnd() - 0.5) * 1.6, l = lush(x, z);
-    if (!H.inFrame(x, z, 0.05, 1) || l < 0.3 || !free(x, z, 0.4) || placed.some(([px, pz]) => Math.hypot(x - px, z - pz) < 1.8)) continue;
+    if (!see(x, z, 0.05, 1) || l < 0.3 || !free(x, z, 0.4) || placed.some(([px, pz]) => Math.hypot(x - px, z - pz) < 1.8)) continue;
     placed.push([x, z]);
     const k = ['tuft', 'flowers', 'mushroom', 'tuft', 'rock'][Math.floor(rnd() * 5)];
     popup(...K[k](), { x, z, yaw: (rnd() - 0.5) * 0.7, scale: 0.65 + rnd() * 0.25, sway: k === 'tuft' || k === 'flowers' ? 0.6 : 0 });
-  }
+  } };
+  fillSmall(H.inFrame);
   // big, blurred pieces overlapping the bottom edge sell the miniature scale
   for (const [x, z, s, kind] of [[-23, 15.5, 2.0, 'tree'], [-7, 17, 1.8, 'bush'], [27, 17.5, 2.1, 'tree'], [9, 18.5, 1.5, 'bush']]) {
     if (kind === 'bush') bushStack(x, z, { scale: s, yaw: (rnd() - 0.5) * 0.4 });
-    else popup(...K.tree(), { x, z, cross: true, scale: s, yaw: crossYaw(), sway: 0.6 });
+    else popup(...K.tree(), { x, z, cross: true, scale: s, sway: 0.6 });
   }
+  // the ring the walk can bring into view (after the overview, so the overview's own draws never change)
+  // (the overview's own margin already covers most of the drift: the ring is what the drift shows beyond it)
+  const ring = (x, z, m, y) => H.inReach(x, z, 0.02, y) && !H.inFrame(x, z, m, y);
+  RES = 0.75; fillGroups(ring); fillSmall(ring, -36, 44); RES = 1;
 }
 
 H.start();

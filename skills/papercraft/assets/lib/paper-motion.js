@@ -172,12 +172,12 @@ export class WalkField {
     };
     if (go(dx, dz)) { if (++this._free > 8) this._side = 0; return true; }
     this._free = 0;
-    // blocked: slide round it as the source game's player does. Steer 20-80 deg off the way he pushes, first to the side
+    // blocked: slide round it as the source game's player does. Steer 20-100 deg off the way he pushes, first to the side
     // that worked last time (decided once per obstacle, so he never dithers at a head-on bump), at the share of the step
     // that still goes forward (cos a: slower round a corner, never backwards), then the axis slides along a wall
     const len = Math.hypot(dx, dz), ux = dx / (len || 1), uz = dz / (len || 1);
     const sides = this._side ? [this._side, -this._side] : [1, -1];
-    for (const a of [0.35, 0.7, 1.05, 1.4]) for (const sd of sides) {
+    for (const a of [0.35, 0.7, 1.05, 1.4, 1.75]) for (const sd of sides) {   // 1.75: just past sideways, round a head-on bump
       const c = Math.cos(a), sn = Math.sin(a) * sd, k = len * Math.max(0.35, c);
       if (go((ux * c - uz * sn) * k, (uz * c + ux * sn) * k)) { this._side = sd; return true; }
     }

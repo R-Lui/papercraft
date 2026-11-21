@@ -17,8 +17,9 @@ colour; 6 Web pages and app UIs; 7 Anti-patterns; 8 Checks before you ship
    and light inside the scene. Toggles are keys, listed once in a fading hint. Hide the cursor.
 2. **When a screen is unavoidable, make it a sheet of paper:** procedural cardstock, a neatline frame, serif small caps
    and ink linework. It slides in like a sheet and throws a shadow ahead of its leading edge.
-3. **Ink, not black; cream, not white.** Use ink `#5a3a28` at 0.55-0.86 alpha, page `#efe0c2`, core `#fbf6ea` (small
-   highlights, edge highlights, text on dark; never a large fill, section 5).
+3. **Ink, not black; cream, not white.** A dark ink from the world's palette at 0.55-0.86 alpha, a cream page and a
+   lighter cream core (small highlights, edge highlights, text on dark; never a large fill, section 5); the countryside
+   build used `#5a3a28` / `#efe0c2` / `#fbf6ea`.
 4. **Ink every line by hand:** jittered ends, slight bulges, uneven widths, a little bleed. Printed areas end in torn
    edges, not rectangles.
 5. **Make every icon a cut-paper piece:** 2-3 layers, the cut edge of `SKILL.md` (a thin dark line, pale only on the
@@ -101,12 +102,13 @@ A map, inventory, journal or pause screen is a physical sheet sliding over the s
 Canvas 2D into textures (or build it in HTML, section 6), and composite it after the post chain (`three-js.md`). It
 costs nothing while closed.
 
-**Cardstock.** Use `paperSheet({ color: '#efe0c2', seed })` from `assets/lib/paperkit-2d.js`, or draw it yourself
+**Cardstock.** Use `paperSheet({ color: <your page colour>, seed })` from `assets/lib/paperkit-2d.js` (the countryside
+build's page: `#efe0c2`), or draw it yourself
 (u = min(W, H) / 100, seeded from the world seed):
 
 | Layer | Count | Size | Colour |
 |---|---|---|---|
-| base | | | `#efe0c2` |
+| base | | | your page colour (`#efe0c2` in the countryside build) |
 | soft radial blotches | 60 | radius 8-30 u | light `rgba(251,246,234,.16)` or dark `rgba(205,180,134,.13)` |
 | fibres (quadratic, bend +-30 %) | W x H / 520 | length 0.5-2.2 u, width 0.05-0.14 u | 55 % light `rgba(253,249,240,.2-.5)`, else `rgba(176,146,100,.1-.26)` |
 | specks | fibres / 3 | 0.1 u | `rgba(120,88,56,.05-.17)` |
@@ -128,8 +130,8 @@ costs nothing while closed.
    - Blank paper gets a faint graticule: ink at alpha 0.075.
 4. Marks:
    - a lamp is a radial glow from `rgba(255,196,90,.75)` to 0 at 3 r, plus an ink-rimmed amber dot;
-   - the player is a terracotta pin with a cream highlight, an ink stem and a soft ground shadow;
-   - a compass is 8 ink points, with the north one terracotta and a single small "N".
+   - the player is a pin in the accent colour with a cream highlight, an ink stem and a soft ground shadow;
+   - a compass is 8 ink points, with the north one in the accent colour and a single small "N".
 5. Light the sheet.
    - By day: a vignette toward warm corners (edges x (0.78, 0.70, 0.60)).
    - At night the page is read by a lamp pool: `col * ((0.2, 0.22, 0.34) + (1.0, 0.76, 0.46) * 0.92 * exp(-3.2 r^2))`.
@@ -226,6 +228,9 @@ Pitfalls for an icon atlas:
 
 ## 5. Type and colour
 
+The roles below carry the countryside build's values as an example: derive your world's from its brief (`palettes.md`
+section 3) and keep the roles.
+
 | Role | Value | Use |
 |---|---|---|
 | Ink | `#5a3a28` | all text and linework; never `#000` |
@@ -281,7 +286,7 @@ The base card recipe is in `web-2d.md` section 5, and the paper-spring easings (
 
 ```css
 :root {
-  --ink: #5a3a28; --page: #efe0c2; --core: #fbf6ea; --accent: #a4512f; --surround: #2a1a12;
+  --ink: #5a3a28; --page: #efe0c2; --core: #fbf6ea; --accent: #a4512f; --surround: #2a1a12;   /* the countryside build's: set your world's */
   --edge: #d9c49c;                                   /* card thickness: a darker copy of the face, never white */
   --cut: inset 1px 1px 0 rgb(251 246 234 / .75), 0 0 0 1px rgb(74 44 34 / .8), 1px 1px 0 1px rgb(74 44 34 / .8);
                                                      /* the cut edge (web-2d.md section 5): lit-side highlight inside,

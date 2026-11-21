@@ -7,7 +7,7 @@ Every image is resized to a working width (default 1600 px; the gates assume it)
            CIELAB chroma mean and p95, % of strongly saturated green ("video-game grass")
   light    mean colour of the darkest 20 % (paper shadows take the world's colour: warm umber on warm ground by
            day, lilac-blue on snow, teal under water, navy at night; never neutral grey or black) and of the brightest 20 % (paper white is cream, not blue-white), warm/cool split (left third
-           minus right third), luma left/right, corner/centre luma (vignette, dark table or warm haze)
+           minus right third), luma left/right, corner/centre luma (vignette or a dark surround)
   lens     blur per horizontal band in px, estimated at edges from the ratio of fine- to coarse-scale gradient
            (independent of edge contrast), plus edge energy per band (p99.5 Sobel); centre and height of the sharp
            band (half-max), sharp/top and sharp/bottom ratios, tiltShift = the larger of the two, peakBlur (blur
@@ -22,8 +22,10 @@ Every image is resized to a working width (default 1600 px; the gates assume it)
            (*_written), because authored albedos sit 5-12 dE from lit pixels and one shot never shows them all
 
 Each metric that has a range gets PASS or WARN, with a hint on what usually fixes a miss. The ranges are STARTING
-GATES: "storybook" was calibrated on the day frames of a shipped pop-up game (15 stills and video frames, five
-biomes, close-up included; snow and fog frames trip satMean by design), "night" so that its six night stills pass. PASS means "not obviously off", never "looks good": shapes, construction,
+GATES: "storybook" admits every day frame of a shipped pop-up game's five biomes (autumn farmland, desert, snow,
+spring gardens, misty pine forest: the stills in assets/gallery/ and 15 earlier stills and video frames, close-ups
+included), so a snowy, misty, dark-forest or desert brief is not pushed toward warm autumn colour; "dusk" is
+calibrated on the 3D template's golden and dusk sets and a black-sand dusk build; "night" admits its night stills. PASS means "not obviously off", never "looks good": shapes, construction,
 density and composition decide how a piece reads, and no metric here can see them. With --target, the table also
 shows the target's values, and metrics that have a "tol" WARN when they are further than tol from the target. A
 look of your own needs its own target or ranges: --dump-ranges, edit, --ranges.
@@ -32,15 +34,18 @@ Usage:
   python measure.py frame.png                           table with PASS/WARN against the storybook gates
   python measure.py frame.png --target target.png       + target values, tol checks and palette distance
   python measure.py a.png b.png c.png --compact         one row per image (compare passes or variants)
-  python measure.py frame.png --palette "#efe0c2,#b9603f,#8e9a5b,#5e9c9a"   palette distance to a written palette
+  python measure.py frame.png --palette "#rrggbb,#rrggbb,..."   palette distance to your style card's written palette
+  python measure.py dusk.png --profile dusk             golden hour and dusk (night: --profile night)
   python measure.py clip.mp4 --at 1,4.5,9               frames of a video (needs ffmpeg on PATH)
   python measure.py frame.png --json out.json           also write everything as JSON ("-" = JSON to stdout)
   python measure.py --dump-ranges storybook > my.json   copy the gates, edit them, then: --ranges my.json
   python measure.py ui.png --profile flat               UI pages, print, flat 2D art: lens, corner, flat-area and
                                                         print-density gates off (a pitched 2D world uses storybook)
 
-Profiles: storybook (default: daylight and dusk, warm haze, shadows coloured by the world, tilt-shift; also a pitched
-2D world), night (indigo ambient, amber practicals), flat (UI pages, print, flat 2D art: no lens, no density).
+Profiles: storybook (default: day in any biome, shadows coloured by the world, tilt-shift; also a pitched 2D world),
+dusk (golden hour and dusk: low light empties print detail, shadows go violet, a dark floor the brief names; palette
+gates off), night (indigo ambient, amber practicals; palette gates off), flat (UI pages, print, flat 2D art: no lens,
+no density).
 Ranges file: {"metric": {"min": 0.1, "max": 0.5, "tol": 0.05, "low": "fix if low", "high": "fix if high"}} or
 {"metric": [min, max]}; null = unbounded ("hint" sets both texts). Keys you leave out keep the profile's values;
 {"metric": null} removes a gate.
@@ -73,24 +78,24 @@ def G(lo=None, hi=None, tol=None, low='', high=''):
 # The measured ranges behind them are listed in references/process.md (step 6, "Measure").
 # ----------------------------------------------------------------------------------------------------------------
 STORYBOOK = {
-    'lumaP5': G(0.03, 0.30, 0.08, 'blacks crushed: lift shadows with a warm tint, nothing pure black',
+    'lumaP5': G(0.03, 0.30, 0.08, 'blacks crushed: lift the shadows with the world\'s shadow tint, nothing pure black',
                 'no darks: the frame looks washed out; deepen contact shadows, add dark accents'),
-    'lumaP50': G(0.30, 0.75, 0.22, 'too dark overall: raise exposure or fill', 'too bright overall: lower exposure'),
-    'lumaP95': G(0.62, 0.92, 0.08, 'paper whites dim and murky: brighten the key or the cream stock',
+    'lumaP50': G(0.30, 0.75, 0.22, 'too dark overall: raise exposure or fill (a dark floor the brief names, black sand or slate, sits lower: judge by eye)', 'too bright overall: lower exposure'),
+    'lumaP95': G(0.55, 0.92, 0.08, 'paper whites dim and murky: brighten the key or the cream stock (a dark forest sits ~0.6)',
                  'whites near clipping: lower exposure / bloom'),
     'clipPct': G(None, 1.0, None, '', 'blown pixels: lower exposure / bloom; only small emissive panes may clip'),
-    'satMean': G(0.52, 0.80, 0.12, 'greyish: the pieces carry too little colour (contrasting accents on every piece, '
-                 'grade saturation ~0.95; the shipped frames measure 0.58-0.73; fine for snow or fog)',
+    'satMean': G(0.12, 0.80, 0.12, 'no colour at all: even snow and fog frames keep ~0.15 (accents on every piece, '
+                 'grade saturation ~0.95; colourful briefs land at 0.55-0.75, snow / mist / fog far lower, which is right)',
                  'over-saturated, reads as toy plastic: lower the grade saturation'),
-    'chromaP95': G(25.0, 76.0, 15.0, 'no saturated accents: add one hot accent family (roofs, berries, lamps)',
+    'chromaP95': G(25.0, 76.0, 15.0, 'no saturated accents: add one hot accent family from the brief',
                    'neon colours: cap the most saturated inks and lights'),
-    'greenPct': G(None, 15.0, None, '', 'saturated green reads as video-game grass: shift greens to olive-ochre'),
+    'greenPct': G(None, 15.0, None, '', 'saturated, uniform green reads as video-game grass: mute the greens a step greyer and keep the grade\'s green pull (palettes.md rule 5)'),
     'shadowWarmth': G(0.06, None, 0.17, 'shadows neutral grey or black: give them the colour of the world (warm umber on warm ground; lilac-blue snow or teal water shadows may WARN here: judge those by eye)',
                       'shadows warmer than the target'),
     'highlightWarmth': G(-0.03, None, None, 'paper white is blue-white: warm the key / white balance to cream', ''),
-    'warmthLR': G(-0.05, 0.40, 0.16, 'the key-light side is cooler than the far side (or a large cool print sits there: water, snow; check the key-only frame)',
+    'warmthLR': G(-0.10, 0.40, 0.16, 'the key-light side is cooler than the far side (or a large cool print sits there: water, snow; check the key-only frame)',
                   'warm/cool split stronger than wanted: soften the fill colour'),
-    'cornerCentre': G(0.50, 1.20, None, 'corners near black: heavy vignette or dark surround; use a mild warm haze',
+    'cornerCentre': G(0.50, 1.20, None, 'corners near black: a heavy vignette or a dark surround; keep the vignette mild (~0.03 by day) and the printed ground past every edge',
                       'corners brighter than the centre: the subject sits in shadow (expected when a bright surround '
                       'such as snow or a cloud sea frames a darker subject: judge by eye)'),
     'focusCentre': G(0.25, 0.75, 0.20, 'sharp band sits too high', 'sharp band sits too low'),
@@ -129,6 +134,11 @@ NIGHT.update({
     'cornerCentre': G(0.10, 0.80, None, 'corners crushed to black: lift the far background a little',
                       'corners as bright as the centre: let the night fall off'),
     'flatPct': G(None, 75.0, 15.0, 'busier than the target', 'too much bare flat colour'),
+    # darkness hides print and empties the sharp band: the shipped night stills measure printDetail ~0.04-0.05,
+    # localContrast ~0.06-0.07, barePct up to ~70
+    'printDetail': G(0.035, None, 0.015, 'the pieces print too little even for night: more, bolder motifs', ''),
+    'localContrast': G(0.050, None, 0.012, 'prints and shadows too flat even for night: a dark third value, lit panes', ''),
+    'barePct': G(None, 72.0, 12.0, '', 'the sharp band is empty even for night: groups of different pieces, lit windows'),
 })
 
 FLAT = dict(STORYBOOK)
@@ -145,7 +155,22 @@ FLAT.update({
     'toothRms': G(0.005, 0.030, 0.007, 'fills need a visible fibre / tooth texture', 'noisy texture'),
 })
 
-PROFILES = {'storybook': STORYBOOK, 'night': NIGHT, 'flat': FLAT}
+# golden hour and dusk: low light empties print detail and contrast as night does, the shadows go violet or indigo
+# (shadowWarmth reads them as neutral), and a dark floor the brief names (black sand, slate) sits lower; calibrated so
+# the 3D template's golden and dusk sets and a black-sand dusk build pass
+DUSK = dict(STORYBOOK)
+DUSK.update({
+    'lumaP5': G(None, 0.30, 0.08, '', 'no darks at all at dusk: deepen the contact shadows'),
+    'lumaP50': G(0.22, 0.75, 0.22, 'too dark even for dusk: raise the exposure or the fill', 'too bright for dusk'),
+    'lumaP95': G(0.50, 0.92, 0.08, 'no bright paper or lit panes at dusk', 'whites near clipping'),
+    'shadowWarmth': G(),
+    'warmthLR': G(-0.20, 0.50, 0.16, 'the key side is much cooler than the far side', 'warm/cool split too strong'),
+    'printDetail': G(0.045, None, 0.015, 'the pieces print too little even for dusk', ''),
+    'localContrast': G(0.060, None, 0.012, 'prints and shadows too flat even for dusk', ''),
+    'barePct': G(None, 68.0, 12.0, '', 'the sharp band is empty even for dusk: groups of different pieces'),
+})
+
+PROFILES = {'storybook': STORYBOOK, 'dusk': DUSK, 'night': NIGHT, 'flat': FLAT}
 
 # order and number format of the table rows
 ROWS = [
@@ -790,7 +815,7 @@ def main(argv=None):
         target_label = target_label or 'palette'
     written = bool(args.palette)  # --palette wins over the target image's palette when both are given
     results = []
-    if args.profile == 'night':
+    if args.profile in ('night', 'dusk'):
         for k in ('paletteDE', 'paletteWorst', 'paletteDE_written', 'paletteWorst_written'):
             ranges.pop(k, None)   # coloured night / dusk light moves every albedo 15-35 dE: compare hue families by eye
     for label, im in expand_inputs(args.images, args.at):

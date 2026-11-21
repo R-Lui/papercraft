@@ -17,20 +17,20 @@ sky, backdrop, book edge or table in view (section 6). Measure against the sourc
 
 | Metric | Value |
 |---|---|
-| Surround / corners | printed ground to every edge, mild warm vignette; corner/centre >= 0.58 |
-| Sharp band | ~36-45 % of the frame height on the hero's scene; big, heavily blurred cards along the bottom edge (section 6) |
+| Surround / corners | printed ground to every edge, a mild vignette (warm by day, the mood's dark at dusk and night); corner/centre >= 0.58 |
+| Sharp band | ~36-45 % of the frame height looks crisp on the hero's scene (`measure.py` focusHeight, the half-peak band, reads wider: ~0.55-0.75, the source game's gameplay frames 0.67-0.72); big, heavily blurred cards along the bottom edge (section 6) |
 | Ground vs cards | the ground ~0.16-0.22 brighter and ~0.16-0.25 less saturated than the cards standing on it |
 | Shadow depth (1 - shadow/lit luma) | broad cast 0.13-0.3, contact 0.3-0.4 in clear light, shallower in fog, dawn or a sandstorm (how to measure: section 8b) |
 | Penumbra | 25-30 % of caster height |
-| Mean saturation (HSV S) | 0.55-0.75 (the shipped reference frames measure 0.58-0.73) |
-| Luma | mean value ~0.64 |
-| Darkest 20 % of pixels | `#291b07` warm brown |
-| Warm/cool | the pieces warm everywhere; shadows take the world's colour: a warm amber on warm ground by day (more saturated than the ground), lilac-blue on snow, teal under water, navy at night (section 8b); never grey |
+| Mean saturation (HSV S) | ~0.55-0.75 in a colourful brief (the shipped colourful frames 0.58-0.73); snow, mist and fog far lower (the gallery's snow ~0.15) |
+| Luma | mean ~0.64 in the colourful day frames; a forest darker, snow and desert brighter, a dark floor the brief names lower |
+| Darkest 20 % of pixels | the world's shadow colour, never neutral grey (`#291b07` warm brown in the warm source frames; olive-black in the forest, lilac-grey on snow, navy at night) |
+| Warm/cool | the pieces keep their own printed colours; shadows take the world's colour: a warm amber on warm ground by day (more saturated than the ground), lilac-blue on snow, teal under water, navy at night (section 8b); never grey |
 
-**Ground against cards.** A pale, low-saturation ground (in the source frames a pale sage-cream page) keeps the warm
-grade from turning it orange: author ground washes pale and low in saturation and let the pieces carry the colour
-(round 8: a ground within 0.04-0.06 of the cards' saturation "dissolved into orange"). Starting colours: `palettes.md`
-rule 9.
+**Ground against cards.** A pale, low-saturation ground (in every source biome, sand, snow, moss or fresh green, paler
+and greyer than the pieces on it) keeps the warm grade from turning it orange: author ground washes pale and low in
+saturation and let the pieces carry the colour (round 8: a ground within 0.04-0.06 of the cards' saturation "dissolved
+into orange"). How far apart to author them: `palettes.md` rule 9.
 
 A brief that is literally a book or a page inside a UI may show the page's edge; inside it the look stays this one
 (no lamp-lit room, no dark table).
@@ -48,17 +48,17 @@ float nl = dot(N, L);
 float front = clamp((nl + wrap) / (1.0 + wrap), 0.0, 1.0);   // wrap 0.30 day, 0.38-0.42 night (one global value)
 ```
 
-**Shadows leak warm light.** A shadow does not multiply the key to zero; it lerps the key toward a leak colour, so the
-shadow side reads as lit by bounce off cream paper:
+**Shadows leak the world's light.** A shadow does not multiply the key to zero; it lerps the key toward a leak colour,
+so the shadow side reads as lit by bounce off the paper around it:
 
 ```glsl
 vec3 irradiance = front * keyColor * mix(leakColor, vec3(1.0), shadowLit);   // leak #a0602c by day (moods: below)
 ```
 
-By day the leak is a warm amber, so shadows come out more saturated than the ground they fall on, never grey. Golden
-hour `#8f5034`; dusk `#6a4a8a`; night `#26368a`; desert `#8c6470`; snow `#6c84b0`; blossom `#8c6c88`; misty forest
-`#44685c`. A leak that is too light
-(hemisphere 0.3 + light leak) reads "floaty, washed": pick per mood (section 8).
+On a warm ground by day the leak is a warm amber (`#a0602c`), so shadows come out more saturated than the ground they
+fall on, never grey; every other light's leak is in `assets/lights.json` (golden hour, dusk and night: the template's
+measured sets, section 8). A leak that is too light (hemisphere 0.3 + light leak) reads "floaty, washed": pick it per
+light.
 
 **Back-lit translucency.** Thin card lit from behind glows warm; thick stacks and other cards in front do not. Gate the
 glow with a second shadow test that ignores blockers within one sheet thickness (so a card never shadows its own back):
@@ -99,7 +99,7 @@ single paper cue. Print it into the card's art, once per silhouette:
 1. A thin dark-brown line right at the silhouette (the card's thickness and printed outline, ~1.5-2.5 px on screen),
    plus a pale highlight just inside it ONLY on the edges that face the light: up to ~1.5 % of the hero's height where
    it faces the key, fading to nothing on the shaded side (constant in world units, clamped 1-2.2 px when far or
-   near: ~1.1 px at the templates' framing, `edgeWidth` 0.06). Never an even pale, cream or white band all round,
+   near: ~1.1 px at the templates' framing, `edgeWidth` 0.08 in the 3D template's popups, kit default 0.06). Never an even pale, cream or white band all round,
    never glowing, never torn. The kit's `P.rim()` derives both colours from the print's own mean colour (a warm light
    tone of it, a dark warm brown, never black), in every mood: do not set edge colours per mood. Folds are not cuts:
    hinge bases and panel joins get no edge (`makeCard({ folds: ['bottom', ...] })`, `P.rim({ skip })`).
@@ -125,11 +125,10 @@ cards). If you cut cards from alpha, give shadow casters the same alpha test or 
 edges on a supersampled capture (the 3D template's `?ss=2`, what a DPR-2 screen shows): a 1x headless capture aliases
 every cut into stairs the player never sees, and critics then chase a fault that is not there.
 
-**Never edge-on.** A flat card seen edge-on is a knife-thin sliver, the most common "this is CG" tell. Place small
-cards on diagonals (45 +- 11 degrees to the grid), slot pairs at 90 degrees turned ~33 degrees off the axes (trees
-and round things; water towers, palms and most landmarks read better from the down-looking camera as fanned pairs, a
-front card plus a darker, mirrored rear copy, or as box folds), or turn small cards about the vertical through their
-hinge toward the camera once upright (`mechanisms.md`).
+**Never edge-on.** A flat card seen edge-on is a knife-thin sliver, the most common "this is CG" tell. Omit `yaw` and
+the 3D harness turns each piece: a single card faces the camera within +-14 deg; a slotted cross (trees, palms,
+cacti, tents, posts) turns its main plane ~24 deg off facing the camera; a quarter cross or V-fold opens toward the
+camera (`structures.md` sections 1 and 3).
 
 ## 4. Depth cues
 
@@ -143,11 +142,12 @@ penumbra ~0.4 x hero height (`maxPenumbra` 1.4 units in the 3D template, 1.2 in 
 **Flat paper casts nothing.** Folded-flat layers sit a hair apart (0.7 % of hero height); set the shadow bias just
 above that gap, so a flat flap looks printed and its shadow grows as it rises.
 
-**Warm contact occlusion.** Every stand-up piece must visibly touch the page: a tight dark contact line at the hinge,
-then the cast shadow ("props without it look pasted on"). Screen-space AO with radius ~0.4 x hero height, strength
-~1.2, tinted warm brown `#5a3214` (grey AO reads as dirt). Normals from the smaller-difference depth neighbours (no
+**Contact occlusion in the world's shadow colour.** Every stand-up piece must visibly touch the page: a tight dark
+contact line at the hinge, then the cast shadow ("props without it look pasted on"). Screen-space AO with radius ~0.4
+x hero height, strength ~1.2, tinted (`aoTint`: warm brown `#5a3214` on a warm ground by day; grey AO reads as dirt). Normals from the smaller-difference depth neighbours (no
 smear across silhouettes). Fade it out inside the blur. Cheap alternative: bake 10-14 % darkening into the bottom
-~0.4 units (~11 % of the hero's height) of each card (`makeCard`'s `contact`, amount 0.12 over 0.4 units by default).
+~0.4 units (~11 % of the hero's height) of each card (`makeCard`'s `contact`, amount 0.12 over 0.4 units by default;
+`contact.color` the world's shadow colour).
 
 **Layer separation.** Stacked flats sit 5-15 % of the object height apart; each layer 10-15 % darker going away from
 the light.
@@ -156,14 +156,14 @@ the light.
 
 | | Value | Notes |
 |---|---|---|
-| Key | warm `#ffdcb2` (template intensity 3.0), elevation 45-55 deg, azimuth 45-65 deg off the camera axis toward screen-left, a little toward the camera | shadows fall sideways and behind where they are seen (a key from behind the camera hides every shadow); 67 deg elevation flattened everything, below ~45 deg shadows get long and theatrical |
+| Key | warm `#ffdcb2` on the template's clear day (other light: `assets/lights.json`; template intensity 3.0), elevation 45-55 deg, azimuth 45-65 deg off the camera axis toward screen-left, a little toward the camera | shadows fall sideways and behind where they are seen (a key from behind the camera hides every shadow); 67 deg elevation flattened everything, below ~45 deg shadows get long and theatrical |
 | Fill | frontal: warm `#f2dcc2` from the camera side, ~1/4-1/3 of the key (template 0.8 against 3.0) | without it, upright cards that face the camera get only ~60 % of the ground's light and go grey; a cool blue fill made daylight shadows blue |
 | Sky / hemisphere | `#fff0da` over `#b39a78`, ~0.14 of the key (template 0.42) | |
 | Key:fill brightness | ~3:1 | |
 | Lamp pools (dusk, night) | three.js `PointLight` (the 3D harness's `H.lamp(x, y, z, k)`), warm `#ffb070`, decay 1, distance ~2.5-3 hero heights, intensity ~6 at dusk and ~4.5 at night, at doors and lamp posts | inverse square (decay 2) makes a hot spot on flat paper; the paper wrap is one global uniform, so lamps get no wrap of their own (section 8) |
 
-- **Mild warm key + white balance**, not a literal 3000 K light (which turned sage into lime). Do the warmth in the
-  grade tint.
+- **A mild key + white balance**, not a literal 3000 K light (which turned greens to lime). Do the warmth in the grade
+  tint.
 - **Light falloff across the frame ("gobo").** A lit paper model is brighter and warmer on the key side: in post,
   from reconstructed world position, `col *= (1 - k*t) * vec3(1 - tint*0.5*t, 1, 1 + tint*t)`, t = ground offset
   along the camera's right vector / radius (just beyond the frame's half width), k 0.12-0.18, tint 0.07.
@@ -193,7 +193,8 @@ float cocPx = min(a * (c < 0.0 ? nearGain : 1.0), 1.0) * maxBlurPx;
 // kD = 1 / (fovY_radians * cot(pitch)): on the ground, a step dy in frame heights changes distance by dr/r = fovY*cot(pitch)*dy
 ```
 
-Values: the visibly sharp band covers ~36-45 % of the frame height, centred on the hero's scene (the shipped frames).
+Values: the visibly sharp band covers ~36-45 % of the frame height, centred on the hero's scene (the shipped frames;
+`measure.py` focusHeight, the half-peak band, reads wider: ~0.55-0.75, the source game's gameplay frames 0.67-0.72).
 The band parameter is not that number: the blur grows slowly past the band's edge, so the 3D template reaches it
 with `focusBand` 0.3 and `ramp` 0.3: tune the parameter until the measured band lands in range; too wide and the
 tilt-shift is gone. Max blur 12-18 px radius at 1080p (3D template 18; a Canvas `blur()`
@@ -218,14 +219,19 @@ Order that shipped (linear scene in, display out):
 4. Depth of field.
 5. Exposure x white-balance tint (1.03, 0.985, 0.98), ACES fit, exposure ~0.82. A mild white balance, never a sepia
    or colour filter over the frame.
-6. Saturation about luma ~0.96 (lower for already-saturated art; up to ~1.05 for muted art); frame mean ~0.55-0.75.
+6. Saturation about luma ~0.96 (lower for already-saturated art; up to ~1.05 for muted art); the frame mean as rich as
+   the world (`palettes.md` rule 3).
 7. sRGB encode, then contrast ~1.18 about a 0.42 pivot.
-8. Pull yellow-green toward sage, hue-masked, display space (under a warm key, grass has r > g, so accept g down to r-0.2):
+8. Pull saturated yellow-green toward a muted paper green, hue-masked, display space (under a warm key, grass has
+   r > g, so accept g down to r-0.2):
    `gm = smoothstep(0.1,0.3,g-b) * smoothstep(-0.2,-0.05,g-r) * amount; col = mix(col, mix(luma, col, 0.45)*(0.97,1,1.03), gm)`
-   with amount ~0.3 when greens are authored sage (the template; the source game ran 0.5-0.7).
-9. Warm shadow lift: `col += #3a200c * 0.03 * (1 - smoothstep(0, 0.45, luma))` (stops the darkest tones crushing to black).
-10. Haze (below), vignette toward warm umber (0.03 by day, ~0.12 at dusk and night; corners >= ~0.58 of the centre,
-    never black), grain 0.8-1.2 % shaped by luma, seeded per frame so stills repeat.
+   with amount ~0.3 by default (the template; the source game ran 0.5-0.7); lower it when the brief's greens must stay
+   fresh, <= 0.1 for teal leads.
+9. Shadow lift toward the mood's shadow tint (umber `#3a200c` by day, navy at night):
+   `col += tint * 0.03 * (1 - smoothstep(0, 0.45, luma))` (stops the darkest tones crushing to black).
+10. Haze (below), vignette toward warm umber by day (0.03) and the mood's dark at dusk and night (~0.12, the table in
+    section 8); corners >= ~0.58 of the centre, never black; grain 0.8-1.2 % shaped by luma, seeded per frame so stills
+    repeat.
 
 The numbers are the 3D template's (`harness.js`); `PaperPost` on its own defaults a little softer (exposure 0.8, tint
 (1.02, 0.99, 0.97), saturation 0.95, contrast 1.1, green pull 0.25).
@@ -251,10 +257,10 @@ killing edge-on slivers, lighter warm shadows, tighter framing.
 - **The palette gate under a mood** compares written colours with lit, graded ones: at dusk and night expect paletteDE
   ~12-18 and judge the colours by eye; the gate is meaningful by day.
 - **Mist** (a misty morning, a foggy harbour) is paper, never a fog filter: cream cloud flats lying low across the
-  water and the fields (the cloud recipe, `procedural-art.md` section 3), a pale far haze, the one place a light haze
-  belongs (a starting set from a test build: `#dcd8ca` from 22 to 80 units at 0.5; check the far ground does not
-  glare against the vignette), a slightly softer key (~2.8) and contrast (~1.12). Expect the saturation gate to read
-  low (~0.48): that is the brief.
+  water and the fields (the cloud recipe, `procedural-art.md` section 3), a far haze in the mist's mid-tone (the `mist`
+  preset's `#788e84`, ~22-80 units at ~0.5; never near white, check the far ground does not glare against the
+  vignette), a slightly softer key (~2.8) and contrast (~1.12). Expect frame saturation well below a colourful day
+  (~0.48 in that test build): that is the brief.
 - **Moods by light, not new art.** The prints never change: only light, leak, haze and grade. Keep two constants so
   it stays one world: the structure colour (red-brown wood in the countryside) and the warm window and lamp colour.
   Cut edges need no per-mood colour: `P.rim()` derives them from each print in every mood. If the mood changes at
@@ -262,11 +268,9 @@ killing edge-on slivers, lighter warm shadows, tighter framing.
 - **What the kit has.** No bloom and no screen-space spill. Lit panes (`P.glow`, `#ffc45a`) are emissive: `setGlow(v)`
   sets their emissiveIntensity, ~0.35 by day (a few warm windows say "someone lives here"), ~1.1 at dusk, ~1.4 at
   night, at exposure ~1; the lens's highlight boost turns them into soft bokeh. Unlit panes are dim amber paper, never
-  near-black (reads as a hole). Lamp pools are three.js `PointLight`s from the 3D harness's `H.lamp(x, y, z, k)` (warm
-  `#ffb070`, decay 1, distance ~2.5-3 hero heights, intensity ~6 at dusk and ~4.5 at night, times `k`) at doors and
-  lamp posts, added before the first render (the light count is fixed). The paper wrap is ONE global uniform: no
-  per-lamp wrap.
-- **Night keeps the pieces readable and warm.** The 3D template lights night with a dim pale-blue moon (about half
+  near-black (reads as a hole). Lamp pools: section 5 (`H.lamp`), at doors and lamp posts, added before the first
+  render (the light count is fixed). The paper wrap is ONE global uniform: no per-lamp wrap.
+- **Night keeps the pieces readable and coloured.** The 3D template lights night with a dim pale-blue moon (about half
   the day key), a blue fill and a blue sky (the Night row below), so every card stays readable and coloured; the warm
   windows and lamp pools carry the warmth, and navy lives in the far haze and the deep shadows (in the shipped night
   frame about half the pixels stay warm). Pieces stay readable by their cut edges. If warm-printed pieces go black
@@ -278,8 +282,8 @@ killing edge-on slivers, lighter warm shadows, tighter framing.
 - **The low key.** Every mood keeps the key 45-65 deg off the camera axis and 45-55 deg up, with the frontal fill at
   ~0.3 of it (dusk and night ~0.4); golden hour and dusk are the only exception, 20-35 deg up for long shadows. A low
   key needs a deeper shadow box: raise paperLights' `distance` and check the far corners still get shadows.
-- **Measure** day, golden hour and dusk with the default `storybook` profile (3D and pitched 2D alike), night with
-  `--profile night`.
+- **Measure** day with the default `storybook` profile (3D and pitched 2D alike), golden hour and dusk with
+  `--profile dusk` (low light empties print detail and turns shadows violet), night with `--profile night`.
 
 The 3D template's measured sets (`?mood=golden|dusk|night`; day is the default), copied from its `MOODS` table.
 Intensities in three.js units at the template's scale (hero 3.6 units); haze = colour, start-end in ground units from
@@ -290,18 +294,11 @@ the focus, amount. Lamp = the door pools' intensity (distance 11, ~3 hero height
 |---|---|---|---|---|---|---|
 | Day | `#ffdcb2` 3.0, ~45 deg up | warm `#f2dcc2` 0.8 | `#fff0da` / `#b39a78` 0.42 | `#a0602c`, 0.3 | 0.35 / - | exposure 0.82, contrast 1.18, tint (1.03, 0.985, 0.98), saturation 0.96, vignette 0.03; haze `#d8bf8e` 34-95, 0.3 |
 | Golden | `#ffc890` 3.4, ~28 deg up | COOL `#b9bcd8` 0.8 | `#ffe6c8` / `#8a7a70` 0.4 | `#8f5034`, 0.3 | 0.35 / - | exposure 0.86, tint (1.02, 0.99, 0.98), saturation 1.0; haze `#e6c08a`, rest as day. The gold comes from a low warm key against a cool fill, never a brown cast over everything (a blind critic: "a global sepia cast") |
-| Dusk | `#ffb38a` 3.2, ~24 deg up | violet `#6f63a8` 1.3 | `#a898d0` / `#5a4a78` 1.0 | `#6a4a8a`, 0.3 | 1.1 / 6 | exposure 1.0, tint (1.02, 0.97, 1.0), saturation 0.95, vignette 0.12 `#1a1430`, shadow tint `#1e2050`; haze `#c98fa0` 24-80, 0.5 |
+| Dusk | `#ffb38a` 3.2, ~24 deg up | violet `#6f63a8` 1.3 | `#a898d0` / `#5a4a78` 1.0 | `#6a4a8a`, 0.3 | 1.1 / 6 | exposure 1.0, tint (1.02, 0.97, 1.0), saturation 0.95, vignette 0.12 `#1a1430`, shadow tint `#1e2050`; haze `#c98fa0` 24-80, 0.4 (the example's: give your world its own) |
 | Night | moon `#c8d6ff` 1.6, ~45 deg up | `#7890d0` 0.7 | `#3a56b0` / `#22243a` 0.85 | `#26368a`, 0.4 | 1.4 / 4.5 | exposure 0.95, tint (0.98, 0.98, 1.03), saturation 1.12, vignette 0.12 `#0a0c24`, shadow tint `#141c48`, shadow lift 0.04; haze `#0e1a44` 14-55, 0.9. An even, saturated blue moonlight keeps every card readable and coloured; lamps are small local glows (a blind critic: one warm spotlight in murk reads wrong) |
 
-Other moods: starting values in `assets/palettes.json`, not measured in a template; same rules, set key, fill, haze
-and leak.
-
-| Mood (palette) | Key | Fill (frontal) | Haze | Leak |
-|---|---|---|---|---|
-| Desert noon (`desert-noon`) | white-hot `#fff0d2` | dusty rose-violet `#d8b0b4` | `#c0905c` | `#8c6470` |
-| Snow (`snow-cabin`) | `#fbf0e0` | cold blue `#a4bbe0` | `#aab4c8` | `#6c84b0` |
-| Blossom (`blossom-spring`) | peach `#ffe6cc` | lilac `#c9b9da` | `#bc9ea4` | `#8c6c88` |
-| Misty forest (`misty-forest`) | `#f8e2b6` | teal `#62857f` | `#788e84` | `#44685c` |
+Other light conditions (hard noon, snow, soft spring, mist, aquatic, overcast): starting values in
+`assets/lights.json`, not measured in a template; same rules: set key, fill, haze and leak.
 
 ## 8b. Checking the shadows
 
@@ -311,36 +308,39 @@ metrics cannot tell (the darkest pixels may be a printed river or a fissure, not
 and behind where the camera sees it. Then, in the normal light, compare the open ground next to a card's shadow with
 the shadow: broad cast shadows ~0.7-0.87 of the lit ground's luma, tight contact shadows ~0.6-0.7 (the shipped
 frames). Too weak on a pale ground: drop the frontal fill toward ~0.2 of the key and the sky light toward ~0.3
-before darkening the leak. The hero, a card facing the camera with the key off to the side, gets the thinnest cast
-shadow of all: turn him 20-30 deg toward the key, and give every standing piece a soft dark smear at its foot.
+before darkening the leak. The hero's slim parts cast the thinnest shadows: give him, and every standing piece, a
+soft dark smear at the foot, and check his shadow on the key-only frame at his usual headings.
 
-Shadow hue follows the world, the pieces stay warm: warm amber on warm ground by day (`#a0602c` leak), lilac-blue
-on snow (the shipped snow frames: shadows `#b5b2c5` on `#e7dade` snow), a deep teal under water, navy at night.
+Shadow hue follows the world, the pieces keep their own printed colours: warm amber on warm ground by day (`#a0602c` leak), lilac-blue
+on snow (the gallery's snow: drift shadows `#A4AFC4` on `#CDD0D8`), a deep teal under water, navy at night.
 Amber on teal-lit sand turns olive: pick the leak from the world's ambient, then check the hue on the key-only frame.
 Under water (a starting set, not measured): key `#eef6ff` ~2.6 from high above, fill `#5fa8b8` ~1.0, sky `#9fd4dc`
-over `#1e4a5a`, leak `#1e5560`, haze `#2f7f8f` far only; corals, sand and the pieces keep their warm prints, the
+over `#1e4a5a`, leak `#1e5560`, haze `#2f7f8f` far only; corals, sand and the pieces keep their own prints, the
 water's colour lives in the ground print and the far haze, never as a filter.
 Golden hour on a warm ground (sand, ochre fields): a warm low key plus a warm ground saturates the whole frame
 (satMean 0.8+, the sand vanishes): use a paler key (`#ffd9a8`), raise the cool fill, or author the ground paler.
 Tall pieces under a low sun throw long shadows that the penumbra cap blurs away (a palm's shadow dissolves): lower
 `maxPenumbra` to ~0.6-0.8 so long shadows keep their shape.
 
-Cool light (a mountain morning, snow, mist) keeps the warm paper: the warm tint and ACES push an authored sage-grey
-toward khaki on screen, so author the cool ground a step bluer and greyer than you want it, keep the key warm-white
-on the pieces, and expect the storybook saturation gate (~0.52) to read lower: that is the brief, not a fault.
-The default grade also pulls teal and green toward sage (`greenDesat`) and cream toward ochre: for teal-led accents
+Cool light (a mountain morning, snow, mist) still runs through the warm grade: the warm tint and ACES push an
+authored grey-green toward khaki on screen, so author the cool ground a step bluer and greyer than you want it, keep the key warm-white
+on the pieces, and expect low frame saturation (the gallery's snow ~0.15): that is the brief, not a fault. The 3D
+harness multiplies a warm cream paper stock over every print and the ground: a cold world passes a cooler stock
+(`createHarness({ stock: '#eef1f6' })`), or its snow lands beige (a tester's whitewashed monastery did). The
+gallery's snow lands at `#CDD0D8` in frame, its drift shadows `#A4AFC4`.
+The default grade also pulls teal and green toward a khaki green (`greenDesat`) and cream toward ochre: for teal-led accents
 set `greenDesat` <= 0.1 and author the teal a little bluer, then check the accents survive in `measure.py`'s palette
 list.
 
 ## 9. Water
 
-Water is printed paper, not glass: a print in the world's water colour (teal in the countryside) with fibre showing,
-a pale hand-cut rim and a thin darker waterline, 2-3 stepped depth tones with wobbly edges, cream cut-paper ripple
-dashes that drift and fade (never distort the surface), rings round anything standing in it, and optionally darker
-mirrored copies of what stands on the bank (the single biggest "alive" cue). Flow uses two cross-fading phases (classic flow-map trick) so the pattern never shears.
-The grade pulls grey teals toward sage (`#7aa9a0` written measured `#89a677` in a test build): a teal that survives
-the default grade is the template's river, `#46aa9e` with a deep `#2e8079` and foam `#f6ecd4`; for a sea or a lagoon
-lead, also set `greenDesat` <= 0.1, then check the water's colour in the frame, not in the code.
+Only when the brief has water (`structures.md` section 6 builds it, and holds the design ideas). Water is printed
+paper, not glass: a print in the world's water colour with fibre showing, a pale hand-cut rim and a thin darker
+waterline, 2-3 stepped depth tones with wobbly edges, cream cut-paper ripple dashes that drift (never distort the
+surface), rings round anything standing in it; reflections are printed marks, never a mirror render. Flow uses two
+cross-fading phases (classic flow-map trick) so the pattern never shears. The default grade pulls a grey teal toward a
+khaki green (`#7aa9a0` written, `#89a677` measured in a test build): author water a step bluer and check it in the
+frame; for a sea or a lagoon lead set `greenDesat` <= 0.1.
 
 ## 10. Units and scaling
 
@@ -356,15 +356,15 @@ The numbers that held up, in one place; the 3D template's `harness.js` uses them
 | Thing | Value | Relative to |
 |---|---|---|
 | Card thickness | 1.5-3 % | hero height |
-| Print layers | `P.layer` at depth 1 (0.1 unit, ~2 px at the template framing): shadow ~0.11 unit away from the light, lip ~0.09, a big layer's even pale edge (`rim`) ~0.12; the silhouette's cut edge is `P.rim` / `edgeWidth` 0.06 (~1.5 % of the hero) | hero 3.6 units |
+| Print layers | `P.layer` at depth 1 (0.1 unit, ~2 px at the template framing): shadow ~0.11 unit away from the light, lip ~0.09, a big layer's even pale edge (`rim`) ~0.12; the silhouette's cut edge is `P.rim` / `edgeWidth` 0.08 in the 3D template's popups (kit default 0.06; ~1.5 % of the hero) | hero 3.6 units |
 | Bridge (`bridge()` in `built-ground.js`) | a plank deck between two side cards: ramps 26 deg over ~55 % of each half span, crown 8 deg, parapet ~0.3 x hero over the deck, sides leaning out 18 deg | hero 3.6 units |
 | Walkable step | the walk field climbs at most ~0.2 x hero between surfaces (`WalkField` `step` 0.75); stairs are thin plank treads on two stepped stringers, rise <= ~1/8 x hero (0.45), run ~0.3 x hero (1.1) (`mechanisms.md` section 14) | hero 3.6 units |
 | Layer gap (stacked flats) | 5-15 % | object height |
-| Key / fill / sky | key 1 (warm `#ffdcb2`), frontal fill ~0.27, sky ~0.14 (template 3.0 / 0.8 / 0.42) | intensity |
-| Shadow leak colour | `#a0602c` warm ground by day, lilac-blue `#6c84b0` on snow, deep teal `#1e5560` under water, navy `#26368a` at night | multiplies the key in shadow |
+| Key / fill / sky | key 1, frontal fill ~0.27, sky ~0.14 (template 3.0 / 0.8 / 0.42; colours per light: `assets/lights.json`) | intensity |
+| Shadow leak colour | the world's shadow colour: `#a0602c` on a warm ground by day, lilac-blue on snow, deep teal under water, navy at night (per light: `assets/lights.json`) | multiplies the key in shadow |
 | Penumbra | 0.2-0.3 x caster-receiver gap | world units |
-| Contact occlusion radius | ~0.4 x hero height, warm tint `#5a3214` | |
-| Tilt-shift | measured sharp band ~36-45 % (3D template: `focusBand` 0.3, `ramp` 0.3), max blur 12-18 px radius (3D template 18), near gain 1.5-1.6 | frame height, 1080p |
+| Contact occlusion radius | ~0.4 x hero height, tinted with the world's shadow colour (`aoTint`; `#5a3214` on a warm ground) | |
+| Tilt-shift | visibly sharp band ~36-45 %, focusHeight ~0.55-0.75 (3D template: `focusBand` 0.3, `ramp` 0.3), max blur 12-18 px radius (3D template 18), near gain 1.5-1.6 | frame height, 1080p |
 | Grade | ACES, exposure ~0.82, contrast ~1.18, tint (1.03, 0.985, 0.98), saturation ~0.96, green pull 0.3 (<= 0.1 for teal accents), no colour haze | template |
 | Grain / vignette | ~1 %, less inside the blur / 0.03 by day to ~0.12 at dusk and night, warm | |
 | Flap rise | 0.2-0.3 s to upright, overshoot 8-15 %, quiver 4.5 Hz, still by 0.6-1.1 s | |
@@ -379,15 +379,15 @@ The numbers that held up, in one place; the 3D template's `harness.js` uses them
 |---|---|
 | Glossy or specular highlights, environment reflections, PBR defaults | diffuse-only paper material with wrap light |
 | Grey or black shadows; one identical drop shadow on every layer; a colour fog or sepia filter over the frame | shadows coloured by the world (warm amber on warm ground by day, lilac-blue on snow, teal under water, navy at night) that follow the light and grow with the gap; mood in the light, leak, haze and grade, never in a filter |
-| Zero-thickness planes; cards seen edge-on | real thickness; place cards on diagonals, slot crosses, turn small cards toward the camera about their hinge |
+| Zero-thickness planes; cards seen edge-on | real thickness; cards facing the camera (+-14 deg), slotted crosses ~24 deg off the view (`structures.md`) |
 | An even pale or white band round every silhouette; glowing or torn edges | dark silhouette line + pale highlight only on the lit edges; no edge on folds |
 | Flat vector fills, clip-art shapes, tone-on-tone prints, thin ink drawings on one colour; plush felt or woven textures | layered collage prints: parts with a lit-side lip and a short soft shadow, 3-5 inks, 3+ value steps, an ornament, fat motifs in contrasting accents, one quiet fibre (`P.layer`, `drawnPiece`) |
-| A hero that is one flat card | a built puppet of several cards at 2-3 depths: legs that stride, a readable face, costume detail, chunky toy-like proportions, colours that contrast with the ground, standing in the sharp band (`mechanisms.md` section 12) |
+| A hero that is one flat card | a small 3D paper model (~10-20 cards, a frontal + profile T per part, limbs on hip and shoulder pivots) that yaws to face the way it walks: a readable face, costume detail, chunky toy proportions, colours that contrast with the ground, in the sharp band (`mechanisms.md` section 12); flat mirrored cards only in 2D or for critters |
 | A bridge, stair, dock or deck made of one standing card; the hero walking through a rail or floating over a deck | build it open: a plank deck between two side cards, a deck on posts (a posts face with gaps cut to the base), stairs of thin treads on two stepped stringers (rise <= ~1/8 of the hero); the walk field reads it (`mechanisms.md` section 14) |
 | Raised natural terrain: a block, plateau or island with strata on its face | a flat ground; height from 3-5 nested curved hill cards stepped ~10-15 % in value and clusters of tall slanted two-tone rock cards; a solid printed face only for built masonry the brief names (a quay wall, a stage) |
 | A full-screen noise overlay pretending to be paper | fibre fixed to the surfaces; screen grain ~1 % at most |
 | Everything sharp, or everything blurred | one sharp band (~36-45 % of the frame) on the subject, blur above and below driven by depth, big blurred cards along the bottom edge |
-| Neon, saturated video-game green, pure white, pure black; a ground as dark or saturated as the cards | warm palette, sage greens, cream and warm ink; the ground ~0.16-0.22 brighter and ~0.16-0.25 less saturated than the cards |
+| Neon, saturated video-game green, pure white, pure black; a ground as dark or saturated as the cards | the brief's own palette with muted paper greens, cream and a dark ink; the ground ~0.16-0.22 brighter and ~0.16-0.25 less saturated than the cards (a dark floor the brief names, black sand or slate, is darker instead, with the pieces lighter than it) |
 | Scale-pop, squash-and-stretch, fade-ins, sliding cut-outs | rotation about a crease with overshoot and quiver |
 | Constant busy motion, bouncy idle loops | stillness with small wind sway; bold motion only for one-off events |
 | A few small props on an empty plain; confetti; a stamped repeat; a visible tile grid | a packed sharp band (`measure.py` barePct <= ~55): groups of 4-8 different pieces from ~20 kinds, at most ~3 identical props in view, open ground mostly outside the band; one continuous printed ground |

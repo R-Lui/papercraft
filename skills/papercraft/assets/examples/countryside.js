@@ -65,7 +65,8 @@ export const shape = {
   },
 
   /** A little one-card paper figure for background extras (hat, head, cloak, legs), feet on y = 0, height h. A hero
-   *  is never one card: build a puppet (references/mechanisms.md section 12). */
+   *  is never one card: build a small 3D paper model that yaws (in 2D, a puppet of cards; references/mechanisms.md
+   *  section 12). */
   figure({ h = 2 } = {}) {
     const s = h / 2;
     const p = [
@@ -419,7 +420,8 @@ export function paintRoof(colors, { rows = 5 } = {}) {
 // ---------------------------------------------------------------------------------------------------------------
 
 
-/** A starter set of small props and critters (human-scale cues sell the miniature). Feet on y = 0; h = height. */
+/** This world's small props (worked examples of fromDrawing silhouettes; human-scale cues sell the miniature): design
+ *  your subject's own. Feet on y = 0; h = height. */
 export const props = {
   mushroom: (h = 1) => fromDrawing((g) => { draw2.rect(g, -0.12 * h, 0, 0.24 * h, 0.55 * h, 0.08 * h); draw2.ell(g, 0, 0.55 * h, 0.42 * h, 0.32 * h); draw2.rect(g, -0.42 * h, 0.4 * h, 0.84 * h, 0.15 * h); }, { w: 0.9 * h, h: 0.9 * h }),
   signpost: (h = 1) => fromDrawing((g) => { draw2.rect(g, -0.05 * h, 0, 0.1 * h, h * 0.95); draw2.poly(g, [[-0.32 * h, 0.62 * h], [0.3 * h, 0.62 * h], [0.4 * h, 0.72 * h], [0.3 * h, 0.82 * h], [-0.32 * h, 0.82 * h]]); }, { w: 0.85 * h, h }),
@@ -484,7 +486,8 @@ export function paintMushroom(colors = {}) {
 /**
  * Small animals as layered paper dolls, facing right, feet on y = 0, h = height in units. Every body part is its own
  * cut layer (drawnPiece), eyes and stripes are printed. Each returns [pts, paint] like drawnPiece. c overrides colours.
- * Use them as the "small story" of a frame: a cat by a door, ducks at the rim, hens at grain, a fox behind a tree.
+ * This world's small story (a cat by a door, ducks at the rim, hens at grain, a fox behind a tree): draw your world's
+ * own creatures the same way.
  */
 export const critter = {
   fox(h = 2, c = {}) {
@@ -609,7 +612,7 @@ export function paintMeadow(colors, { tufts = 1, flowers = 1 } = {}) {
   };
 }
 
-/** Bridge side card (bridge() in the 3D kit): the face below the deck (stone blocks with fanned arch stones, or
+/** Bridge side card (bridge() in examples/built-ground.js): the face below the deck (stone blocks with fanned arch stones, or
  *  planks) and the parapet above it as its own layer with a pale cut edge and coping. deckH(x) = deck height along the
  *  card (x = along the span), arch = { w, h } of the opening under the deck. colors: { stone | wood, rail? }. */
 export function paintBridgeSide(colors, { deckH, arch = null, wood = false } = {}) {

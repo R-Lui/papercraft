@@ -1,14 +1,16 @@
 # Paper motion
 
 How cut paper moves: one hinge per card driven by a latched spring, choreographed in sequence, quietly alive at rest,
-plus paper puppets, small-object "paper verbs", a calm miniature camera and frame timings for video.
+plus paper puppets, small-object "paper verbs", a calm miniature camera, frame timings for video and a living world
+(weather, flyers, creatures).
 
 Read this when: animating anything that should read as paper (pop-up rises and folds, a paper character, wind, UI
-cards, the camera, a rendered clip), or when motion looks floaty, rubbery, busy or CG.
+cards, the camera, a rendered clip), giving a world its life (weather, flyers, smoke, creatures: section 12), or when
+motion looks floaty, rubbery, busy or CG.
 
 Contents: 1 Laws; 2 The flap model; 3 Keyframes and acceptance bands; 4 Size response and variety;
 5 Choreography; 6 Deterministic integration; 7 Idle life; 8 Paper puppets; 9 Small things and the allowed
-exceptions; 10 Camera language; 11 Animation and video
+exceptions; 10 Camera language; 11 Animation and video; 12 A living world: weather, flyers, creatures
 
 Units: **H** = hero (figure) height, **F** = frame height at the focus distance, **p** = fold progress (0 flat on the
 page, 1 upright, above 1 past upright). Seconds stay seconds. *(opt)* marks a flourish; everything else is required
@@ -254,8 +256,9 @@ Make every moving thing one of three kinds:
 1. **Fixed step + interpolation** (flaps): consume dt in exact 1/240 s steps (clamp dt to [0, 1/20] s), draw
    `prev + (cur - prev) * acc/h`, step outside and cards inside so a child reads its parent at the same step
    (`FlapSystem` above). Choose the step for your highest frequency (~50 steps per cycle). Kit: `FixedClock` in
-   `paper-motion.js` is this accumulator (`advance(dt, update)` returns the interpolation alpha); the kit's springs
-   sub-step `dt / ceil(240 dt)`, so inside a fixed clock they are exact, outside it very close.
+   `paper-motion.js` is this accumulator (`advance(dt, update)` returns the interpolation alpha; its default step is
+   1/120 s, so pass `new FixedClock(1 / 240)` for the steps above); the kit's springs sub-step `dt / ceil(240 dt)`,
+   so inside a fixed clock they are exact, outside it very close.
 2. **Exact closed-form steps** (followers, the camera):
    ```js
    function damp(s, goal, prevGoal, smoothTime, dt) {              // critically damped, exact for any dt
@@ -264,9 +267,10 @@ Make every moving thing one of three kinds:
      s.v = (s.v - w * k) * e; s.x = g + (d + k) * e;
    }
    ```
-   Secondary springs (lean, roll, a dangling lantern) sub-step `n = ceil(dt * 120)`:
-   `v += (w^2 (target - x) - 2 z w v) h; x += v h`. Movement uses the mean of old and new velocity, so a path is the
-   same at 30, 60 or 144 Hz. Weights that ramp in over time (a camera lead) are also taken at mid-step.
+   Secondary springs (lean, roll, a dangling carried item) sub-step `n = ceil(dt * 240)` (h <= 1/240 s, as `Spring`
+   and the harness do; section 8): `v += (w^2 (target - x) - 2 z w v) h; x += v h`. Movement uses the mean of old and
+   new velocity, so a path is the same at 30, 60 or 144 Hz. Weights that ramp in over time (a camera lead) are also
+   taken at mid-step.
 3. **Pure functions of time and place** (wind, sails, weather, birds, idle rocking): `f(t, x, z, hash)`, no state.
 
 Also: a `settle()` that snaps every spring to its target and finishes every one-shot, so stills are exact; hard
@@ -370,7 +374,7 @@ speed)).
 | Roll into turns | <= 4 deg (yaw rate x 0.035) on 3.4 Hz, ratio 0.6 | 8 |
 | Idle breathing | 0.9 deg at 0.32 Hz, two incommensurate sines (x1, x0.63) | |
 | Start / stop | 0 to 90 % speed in 0.06 s; heading follows input at 13 /s; ground height followed at 45 /s | ground at 18 /s lagged ramps |
-| Carried lantern *(opt)* | 2-axis pendulum 1.5 Hz, ratio 0.22, ~1 deg per H/s^2 of acceleration, +5 deg of gait, clamp 28 deg | |
+| Carried item *(opt, only if the design has one)* | a 2-axis pendulum 1.5 Hz, ratio 0.22, ~1 deg per H/s^2 of acceleration, +5 deg of gait, clamp 28 deg | |
 
 Motion read every frame for minutes must be subtle; a fold that happens once can be bold. Halve the bob again after
 the critics are happy.
@@ -402,40 +406,34 @@ template's `setHero(body, { parts })`). From the same distance phase:
 
 ## 9. Small things, and the allowed exceptions to "nothing scales"
 
-Authored pieces only ever rotate. Three runtime systems break the rule on purpose, each disguised as a paper verb;
+Authored pieces only ever rotate. Four runtime systems break the rule on purpose, each disguised as a paper verb;
 copy them as verbs, never as generic tweens:
 
 | Verb | Use for | Recipe |
 |---|---|---|
 | Pop | a small card appearing on an already risen surface (animal, collectible), never scenery | scale `k = 1 + 2.4(u-1)^3 + 1.4(u-1)^2`, u 0 to 1 in 0.22 s (peak 1.07 at u 0.61); hide in 0.1 s |
 | Flip | a flat card turning round (an animal or a 2D hero changing direction) | width x abs(f), f eased to +-1 at 11 /s, art mirrored while f < 0: reads as a spin about its vertical axis; cut at the midpoint (f jumps across the thin middle), so the card is never seen edge-on, one sliver frame at most |
-| Shrink away | a collected scrap flying into the pack; a leaf after resting on the page; bits near the lens | scale `1 - e^2` at the end of the motion |
+| Shrink away | a collected scrap at the end of its flight; a leaf after resting on the page; bits near the lens | scale `1 - e^2` at the end of the motion |
+| Grow in | life only (paper-life, section 12), never a card: puffs scale up from nothing as they leave the emitter and down to nothing at their end; fallers appear above the frame, out of view, and shrink away on the page | never by opacity |
 
 Secondary motion and small life:
 - **Lag**: hats, packs and tassels trail by a phase offset (about one frame at 30 fps) or a sub-stepped spring.
 - **Creased bits**: every falling leaf, petal, flake or bird is two halves folded on a centre crease (depth ~0.16 of
   the width, ~18 deg per half) with a darker lip for thickness; a flat quad reads as a sprite. Fallers rock about
-  face-up so they always catch the key, sway more the higher they are, then rest on the page (leaves 9 s, petals
-  4.5 s, snow 2.6 s) before shrinking away. Fall speeds: leaves 0.7-1.2 H/s, snow 0.8-1.4 H/s.
-- **Wings** *(opt)*: flap by changing the crease angle of one card (birds, flocks of 3-5 in a V); butterflies hinge
-  two wing cards on the body, `0.1 + 1.05 abs(sin(11 t))` rad. Fly just above the tallest pieces (~1.2-1.6x their height; ~2.5-4 H over trees of 2-2.5 H): higher
-  fliers leave the focus band and blur into white holes.
-- **Animals** *(opt)*: two walk frames advanced by distance, at most 9 frames/s; per step a hop `abs(sin)` of
-  1-12 % H and a rock of 1-6 deg (a hinge rock in a pitched 2D view: at most ~1 deg, section 8); at rest a 0.7 deg
-  rock at ~0.18 Hz with a phase per index. Reactions (lift the head, shuffle aside, freeze then bolt) stay local.
-  They never follow the hero.
+  face-up so they always catch the key, sway more the higher they are, then rest on the page before shrinking away
+  (fall speeds and rest times: section 12).
+- **Flyers, creatures and smoke**: section 12.
 - **A light that "catches"** *(opt)*: a lantern level behaves like a sprung flap:
   `u < 1: smoothstep(u) + 0.35 sin(pi u) u` over 0.6 s, then `1 + 0.16 exp(-3.5 t) sin(26 t)`.
-- **Smoke** *(opt)*: round paper discs with a cut spiral, rising ~1.3 H over 5.4 s with a slow spin, not puffy clouds.
-- **Never in the way**: ambient bits shrink to nothing within 0.4-0.7 H of the camera-to-hero line and fade within
-  4-8 H of the lens. Thin density by rank (piece j shows only if density > (j + 0.5)/count), never by opacity.
+- **Never in the way**: ambient bits shrink to nothing within 0.4-0.7 H of the camera-to-hero line and within 4-8 H
+  of the lens. Thin density by rank (piece j shows only if density > (j + 0.5)/count), never by opacity.
 
 ## 10. Camera language
 
 A miniature reads through a long lens looking down into the world, the printed ground past every frame edge (no
-horizon, sky, table or book edge), a narrow sharp band on the subject and a calm camera that never chases. A follow
-camera keeps the hero a little below centre so the world unfolding ahead stays in frame; a composed still puts him
-off-centre (`worlds.md` section 9).
+horizon, sky, table or book edge), a sharp band across the subject (~36-45 % of the frame, `look.md` section 6) and a
+calm camera that never chases. A follow camera keeps the hero a little below centre so the world unfolding ahead
+stays in frame; a composed still puts him off-centre (`worlds.md` section 9).
 
 | Key | Value | Note |
 |---|---|---|
@@ -445,7 +443,7 @@ off-centre (`worlds.md` section 9).
 | Distance | hero 6-10 % of F (template ~8 %) | |
 | Aim | hero's chest (0.6 H) plus 1 H up-screen | the hero sits ~1 H (6-10 % of F) below centre |
 | Look-ahead | 1.7 H in the walking direction, 4 H when walking toward the camera | near ground is foreshortened away |
-| Follow | exact critically damped (section 6), smoothTime 0.28-0.4 s, mid-step goal | |
+| Follow | exact critically damped (section 6), smoothTime 0.28 s (the template's camera window), mid-step goal | |
 | Drift *(opt)* | lens position 0.06 H (0.7 % of F in the shipped framing) at 0.07 Hz, second axis 0.6x at 1.37x frequency; aim fixed | "a hand-set tripod head" |
 | Focus | depth-of-field focus at the hero's chest (`PaperPost.focus`) | band, blur: `look.md` section 6 |
 | View change | glide 0.9 s, smoothstep on every key (distance, pitch, yaw, FOV, aim) | never cut |
@@ -469,8 +467,14 @@ want = hero + vel * (lookAhead / topSpeed + smoothTime) - upScreen * (leadToward
   steep views.
 
 **Sight assist instead of holes.** If 2 of 3 rays (thigh, chest, hat) to the hero are blocked by a large piece for
-0.4 s, ease the camera through the gentlest offset that clears them (pitch +5, yaw +-7, pitch +10, yaw +-14 deg),
-critically damped with tau 0.8 s, and back after 0.6 s clear. Never cut holes or bend scenery.
+0.4 s, ease the camera through the gentlest offset that clears them (pitch +5, yaw +-7, pitch +10, yaw +-14 deg, then
+x1.3; under a roof, down toward 40 deg), critically damped with tau 0.8 s, and back after 0.6 s clear. Never cut
+holes or bend scenery (the source game's owner turned off both a see-through circle and pieces that tipped aside).
+The 3D harness does this: blockers are the constructions at least 0.9 H tall (houses, roofs, towers, stalls), not the
+cards and crosses (trees, bushes, props), as in the source game; popup's `sight: true / false` overrides it per piece,
+and `__papercraft.sight()` reports the rays blocked where he stands (walk a route with `place()` and read it). The
+first step from the authored overview starts the window from the frame as it is (no swoop to re-centre him), and the
+lens eases from the overview's `focus` to him over ~0.6 s.
 
 ## 11. Animation and video (non-interactive)
 
@@ -485,7 +489,7 @@ upright f8, peak f8-9, still f31-32.
 **Shot structure** (4-8 s):
 1. 0.5-1 s of the flat print (it must already show what will rise; `worlds.md`).
 2. Ink-in 0.45 s, then the ripple and the rises (1-1.5 s, the money shot ~0.5 s after each trigger).
-3. At least 2 s of idle life: sway, drift, a walking figure, a lantern catching.
+3. At least 2 s of idle life: sway, drift, a walking figure, the world's own life (section 12).
 
 Rules from a batch of demo clips:
 - Reveal once. Only the first shot rises from fully flat; later shots open already risen and alive.
@@ -506,3 +510,87 @@ Rules from a batch of demo clips:
   along the page of +-0.1-0.3 % of its size. Never lift a foot off the page; re-seed per pose, not per frame.
 - Exposure flicker +-0.5-1.5 % per pose; grain re-rolled per pose; camera locked off or moved in per-pose steps.
 - Halve the idle sway: at stop-motion rates it already reads as boil.
+
+## 12. A living world: weather, flyers, creatures
+
+A place is alive in the source game: leaves come down and rest on the page, smoke curls from chimneys, birds cross
+above the trees, sheep graze, hens scatter, a fox bounds off when the hero comes near. Choose that life from the
+brief's ENVIRONMENT and time of day, never one list for every world. Use 3-5 kinds per world, small, slow and paper,
+moving while the hero stands still. `assets/lib/paper-life.js` is the plumbing (bottom of this section); the
+colours, cuts, counts and places come from your brief.
+
+**What lives where** (the source game's five biomes, then the same thinking for others; numbers are its densities,
+1 = the full pool below):
+
+| Environment | Weather and air | Flyers | Creatures | Wind (sway x) |
+|---|---|---|---|---|
+| autumn farmland | leaves 0.8, chimney smoke, cloud shadows | butterflies 0.5, birds 1, fireflies at night 0.3 | sheep graze, hens peck, cats by the doors, a fox shy | 1 |
+| desert oasis | dust motes 1, sand gusts 1 | birds 0.5 | camels graze, lizards and a night fox shy | 1.35 (gusty) |
+| snow hamlet | snowfall 1, chimney smoke, a little mist | birds 0.5 | deer, arctic foxes and hares shy; a dog and a cat by the cabin | 0.6 |
+| spring gardens | petals 1 | butterflies 1, songbirds, fireflies at dusk 0.75 | lambs graze, songbirds peck | 0.85 |
+| pine forest | rain 1, mist 1, a few leaves | fireflies 1 (over water, at night), birds 0.6 | deer, foxes and squirrels shy; a cat on the bench | 0.3 (still) |
+| others: examples of the thinking, take only what the brief implies | reef: bubbles rising, drifting specks; volcanic: ash falling, ember motes; city: paper litter and leaves, steam from vents; station: dust in the light, steam | fish schools as a `flock`, gulls, bats, drones | crabs (peck), boats and ducks (float), pigeons (peck), robots on rounds (pet) | from the place |
+
+**Sizes and speeds** (H = hero height; from the shipped config at H = 0.6):
+
+| Kind | Size | Motion | Pool in a box ~2x the frame |
+|---|---|---|---|
+| leaves | 0.22-0.33 H | fall 0.7-1.2 H/s, sway 0.55 H, tumble 1.5 rad/s, drift 0.9 H/s with the wind; rest on the page ~9 s while shrinking away | 40-60 |
+| snow | 0.07-0.12 H (star flakes, or discs when tiny) | fall 0.8-1.4 H/s, sway 0.27 H, rest 2.6 s | 460 |
+| petals | 0.14-0.22 H | fall 0.55-1 H/s, sway 0.65 H, rest 4.5 s | 110 |
+| rain | thin slanted streaks 0.18-0.32 H long, ~1/20 as wide, in the mist colour (never fat white bars) | fall 11-13 H/s, wind 2.8 H/s | 700 |
+| dust, pollen | 0.04-0.06 H | 0.2-0.5 H/s at 0.25-2.5 H up; shrink away within ~4 H of the lens (never a fat blur at the lens) | 60 |
+| butterflies | ~0.22 H | roam ~1.8 H round flowers, 0.5-1.25 H up, flap 11 Hz | 18 |
+| birds | wing ~0.33 H | a flock of 5 crosses every ~30 s, in ~15 s, just ABOVE the tallest common pieces (~2.5-3.5 H; higher they leave the focal band and blur into dark slashes) | 1-5 flocks |
+| smoke | 0.15-0.45 H cream paper discs, each with a thin spiral cut printed on it (`cut: 'puff'`, the default; a bare spiral band reads as an @ sign) | rise ~0.45 H/s over ~4.5 s, drift with the wind, a slow turn; chimneys rest at night (puffs read as dark dots); a volcano, a factory or incense keeps going (`night: 1`) | 3-4 per chimney |
+| fireflies | 0.2 H glowing dots, pulsing | roam ~0.9 H, gather over water; night only | 64 |
+| mist | sheets 5-8 H wide, opacity ~0.1 | drift 0.25 H/s, low (~0.8 H) | 7-9 |
+| cloud shadows | 13-22 H soft blots, opacity ~0.15 | slide 0.6 H/s with the wind; by day only | 4-5 |
+
+**Creatures** move with a behaviour, never at random:
+- **graze:** slow herd drift round home with long pauses; it stops and faces the hero as he passes (sheep, cows,
+  camels, deer).
+- **peck:** short quick moves and turns; it scatters a hop away when he comes within ~1.25 H (hens, chicks, pigeons).
+- **shy:** sits still; within ~2.5 H it freezes for a beat, bounds 3-5 H away, then peeks back at him (rabbits,
+  foxes, lizards, squirrels).
+- **float:** slow arcs on water (ducks, swans, boats).
+- **perch:** stays put, turns now and then (an owl on a stump, a cat on a fence).
+- **pet:** wanders, sits and naps near home (cats, dogs). Nothing follows the hero unless the brief asks: the source
+  game's owner turned following off.
+
+Place them in small scenes (a cat on a fence, a dog by a cart, hens in a yard, camels by the palms, ducks on the
+water and on the bank); about ten in frame, small animals ~1/3 of the hero and sheep ~1/2 (the shipped sizes). A
+creature is a card that FLIPS to face the way it goes, with |scale| jumping across 0.3 so it is never edge-on. It
+hops a little per step (~0.03 H) and rocks (~3 deg); it never slides.
+
+**Day and night:** butterflies sleep, birds fall to ~1/3, fireflies come out, mist thickens (x1.25), and chimneys
+rest. The same light change re-lights the life: nothing is repainted.
+
+**Rules that keep it paper:** every bit of life is a matte cut card lit by the scene (leaf, star flake, petal, curl,
+streak); only fireflies and embers glow. Keep it subtle (the owner of the source game kept asking for calmer). Never
+fill the air: on most frames you should count only a few falling things in the sharp band. Nothing pops in: fallers
+spawn above the frame and shrink away on the page, and puffs grow from nothing and shrink to nothing.
+
+**Plumbing:** `assets/lib/paper-life.js` (three.js; every size and speed in H):
+
+```js
+import { createLife } from 'papercraft/lib/paper-life.js';
+const life = createLife({ scene: H.scene, camera: H.camera, heroHeight: H.heroHeight, seed: 7, wind: [0.94, 0.34] });
+life.fallers({ count: 460, cut: 'flake', colors: ['#ffffff', '#fbf6ee'], size: [0.07, 0.12], fall: [0.8, 1.4], sway: 0.27, land: 2.6 });
+life.puffs({ at: [house.userData.chimneyTop], rise: 0.45, life: 4.5 });   // cut 'puff': a disc with a cut spiral
+life.flock({ height: 3.4, colors: ['#f6f1e6'] });
+life.critter(deer.group, { behaviour: 'shy', hero: H.hero.group.position, walk: H.walk });
+life.setNight({ night: 1, dusk: 0.5 }[H.flags.MOOD] ?? 0);
+H.onStep((t, dt) => life.update(dt, H.target));            // the weather box follows the view
+H.onRestart(() => life.reset(H.target));                    // captures repeat: restart(); step(T)
+```
+
+Kinds: `fallers` (cuts `leaf`, `petal`, `flake`, `disc`, `confetti`, `streak` with `streak: true` for rain, or your
+own outline), `motes` (`rise` for bubbles and embers, `glow` for embers), `flyers` (wings, or `glow` for fireflies;
+`anchors` = where they gather), `flock`, `puffs` (`at`: points or `{ object, offset }`; an object puffs only while it
+stands upright), `mist`, `cloudShadows`, `critter(node, { behaviour, home, roam, hero, walk, solid })` (`solid`: a
+radius in H that makes a big creature, a yak or a person, a moving solid the hero walks round; a tester's hero walked
+straight through monks and yaks). Each kind takes
+`day` / `night` factors. Life draws with a plain matte material on purpose (too small for fibre; it takes the scene's
+light). The 3D example scene's section 6 wires one world's set. In 2D, draw the same kinds as small
+cut shapes in the air and on the page, with the same numbers.

@@ -1,10 +1,11 @@
 // papercraft / paperkit-3d.js
-// three.js building blocks for paper worlds: a dead-matte paper material (wrap light, warm shadow leak, back-lit
-// translucency), cut cards with real thickness and a printed cut edge, springs and hinges, a warm key / fill rig with
+// three.js building blocks for paper worlds: a dead-matte paper material (wrap light, a shadow leak in the world's
+// colour, back-lit translucency), cut cards with real thickness and a printed cut edge, springs and hinges, the
+// structure types' constructors (references/structures.md), a key / fill rig with
 // contact-hardening soft shadows (PCSS), and a macro-lens post chain (tilt-shift DOF from depth AND screen height,
 // light falloff, silhouette depth line, ACES grade, display-space haze, vignette, grain).
 // Pairs with paperkit-2d.js for every texture. Tested with three r187 (import map or bundler providing 'three').
-// Units are yours; the defaults assume 1 unit = 1 cm (a 4 cm hero, 0.08 cm card).
+// Units are yours; the defaults assume 1 unit = 1 cm (a 3.6 cm hero, 0.08 cm card).
 import * as THREE from 'three';
 import { paperSheet, normalMap as sheetNormal, printCard, rng, mix, shade, toRGB, toHex, shape as P2shape } from './paperkit-2d.js';
 import { Spring, FlapSpring, windSway, WalkField } from './paper-motion.js';
@@ -36,7 +37,7 @@ export function paperTextures(renderer, { color = '#f6efe2', seed = 7, size = 51
 /** Look of the paper BRDF, shared by every paper material (change values at runtime, they are uniforms). */
 export const PAPER_LIGHT = {
   wrap: { value: 0.3 },                                   // soft terminator: 0 = Lambert, 0.3 day, 0.42 night
-  leak: { value: new THREE.Color('#a0602c') },            // what a shadow lets through: warm amber by day, never black
+  leak: { value: new THREE.Color('#a0602c') },            // what a shadow lets through, never black: the world's shadow colour (default: a warm ground's day amber; lilac-blue on snow, teal under water, navy at night)
   trans: { value: 0.3 },                                  // back-lit glow of thin card
   transTint: { value: new THREE.Color('#ffb070') },       // warm by day; make it cool and weak at night
 };
@@ -76,7 +77,7 @@ function paperLightsChunk() {
 }
 
 /**
- * Dead-matte paper: Lambert with a soft terminator, shadows that leak warm light instead of going black, and a back-lit
+ * Dead-matte paper: Lambert with a soft terminator, shadows that leak the world's colour instead of going black, and a back-lit
  * glow. No specular, no environment reflection: any GGX sheen at grazing angles reads as plastic or wet.
  */
 export function paperMaterial({ color = '#ffffff', map = null, normalMap = null, normalScale = 0.4, side = THREE.FrontSide, emissive = null, emissiveIntensity = 1, vertexColors = false } = {}) {
@@ -94,6 +95,14 @@ export function paperMaterial({ color = '#ffffff', map = null, normalMap = null,
   };
   m.customProgramCacheKey = () => 'papercraft-paper';
   return m;
+}
+
+/** A copy of a paper material that keeps its paper lighting (three's clone() drops onBeforeCompile) and shares its
+ *  textures (no second upload): a second plane, a tinted twin, the same print on another card. */
+export function cloneMaterial(m) {
+  const c = m.clone();
+  c.onBeforeCompile = m.onBeforeCompile; c.customProgramCacheKey = m.customProgramCacheKey;
+  return c;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -151,7 +160,8 @@ export function makeCard(pts, { paint = null, paper, thickness = 0.08, edgeWidth
     // highlight on the lit edges only, nothing along folds)
     if (contact && contact.amount > 0) P.draw((g) => {
       const gr = g.createLinearGradient(0, P.box.y0, 0, P.box.y0 + contact.height);
-      gr.addColorStop(0, `rgba(60,34,14,${contact.amount})`); gr.addColorStop(1, 'rgba(60,34,14,0)');
+      const [cr, cg, cb] = contact.color ? toRGB(contact.color) : [60, 34, 14];   // contact.color: the world's shadow colour (default umber)
+      gr.addColorStop(0, `rgba(${cr},${cg},${cb},${contact.amount})`); gr.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
       g.fillStyle = gr; g.fillRect(P.box.x0 - 1, P.box.y0 - 1, P.box.w + 2, contact.height + 1);
     });
     if (keyline) P.outline(ink);                       // optional faint key line; the shipped style has none
@@ -259,34 +269,63 @@ export function clipHalf(pts, side = 1) {
   return out;
 }
 
+/** The part of an outline at or below height ymax (a low buttress cut from a full fin). */
+export function clipBelow(pts, ymax) {
+  const out = [], inside = (p) => p[1] <= ymax;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length], ia = inside(a), ib = inside(b);
+    if (ia) out.push(a);
+    if (ia !== ib) { const t = (ymax - a[1]) / (b[1] - a[1]); out.push([a[0] + (b[0] - a[0]) * t, ymax]); }
+  }
+  return out;
+}
+
 /**
- * Slot-together cross (trees, pines, lamps, signposts), built like the real thing: card A in the XY plane plus the
- * second plane B as TWO HALF cards hinged on A's front and back faces along the vertical slot line x = 0. Folded,
- * each half lies flat on its face of A; opening, they swing out to 90 degrees without ever passing through A. The
- * halves FOLLOW the parent hinge's progress (never their own spring, or the planes scissor). B prints a little darker
- * (reads as depth). Put the group on a hinge() and turn it ~30 degrees off the view axis so neither plane is edge-on.
- * opts are makeCard options; opts.second = { pts, paint, ... } for a different second plane.
+ * Slot-together cross and its family (references/mechanisms.md section 5), built like the real thing: card A in the
+ * XY plane plus the second plane B as HALF cards hinged on A's front and back faces along the vertical slot line x = 0.
+ * Folded, each half lies flat on its face of A; opening, it swings out to `angle` degrees without ever passing through
+ * A. The halves FOLLOW the parent hinge's progress (never their own spring, or the planes scissor). B prints a little
+ * darker (reads as depth). Put the group on a hinge() (the 3D harness's popup turns it as the source game does).
+ *   full cross (+, default): A whole, both halves of B           trees, palms, cacti, tents, posts, lanterns
+ *   half cross (T): halves 'back' (hidden depth behind a card that faces the camera: a boulder, an igloo, a shrine) or
+ *                   'front' (a buttress or porch toward the viewer)
+ *   quarter cross (L): main 'right' (or 'left'), halves 'front' (or 'back'): two half cards meeting at the slot, a
+ *                   corner; with angle > 90 it opens into a V-fold (a dune, a drift, a ridge, a rock outcrop)
+ * opts are makeCard options, plus: halves 'both' | 'front' | 'back'; main 'full' | 'left' | 'right'; angle (deg the
+ * halves open to from A, 90 = square); opts.second = { pts, paint, ymax, scale, ... } for a different second plane
+ * (ymax cuts it low: a buttress instead of a full fin; scale < 1 keeps a hidden half inside A's silhouette).
+ * Without its own pts or paint, the second plane is A's print cut to the half and tinted a step darker: ONE print per
+ * cross (a second print of the same art doubled the cost of every tree, lamp and post).
  */
 export function crossCard(pts, opts = {}) {
-  opts = { back: 'mirror', ...opts };   // a slotted card is printed on both faces: a kraft back reads as a brown blade
+  opts = { back: 'mirror', halves: 'both', main: 'full', angle: 90, ...opts };   // a slotted card is printed on both faces: a kraft back reads as a brown blade
   const group = new THREE.Group();
-  const a = makeCard(pts, opts);
-  const bOpts = { ...opts, seed: (opts.seed ?? 1) + 101, ...(opts.second || {}) };
-  const bPts = bOpts.pts || pts;
+  const aGeom = opts.main === 'right' ? clipHalf(pts, 1) : opts.main === 'left' ? clipHalf(pts, -1) : null;
+  const a = makeCard(pts, aGeom ? { ...opts, geomPts: aGeom } : opts);
+  const sec = opts.second || {}, own = !!(sec.pts || sec.paint);   // own: the second plane has its own side view / print
+  const bOpts = { ...opts, materials: null, seed: (opts.seed ?? 1) + 101, ...sec };   // A's stamped print (materials) is A's art only
+  const bs = bOpts.scale ?? 1, bPts = own ? (bOpts.pts || pts).map(([x, y]) => [x * bs, y * bs]) : pts;   // scale < 1: the half hides inside A's silhouette
   const t = opts.thickness ?? 0.08;
-  let shared = null;
-  const halves = [1, -1].map((side) => {
-    const m = makeCard(bPts, { ...bOpts, geomPts: clipHalf(bPts, side), materials: shared });  // second half reuses the first half's print
+  const sides = opts.halves === 'front' ? [1] : opts.halves === 'back' ? [-1] : [1, -1];
+  let shared = own ? null : a.material.map((mat) => { const c = cloneMaterial(mat); c.color.multiplyScalar(0.92); return c; });
+  const setGlow = (v) => { if (shared && shared[0].emissiveMap) shared[0].emissiveIntensity = v; };
+  const halves = sides.map((side) => {
+    let geom = clipHalf(bPts, side);
+    if (bOpts.ymax != null) geom = clipBelow(geom, own ? bOpts.ymax : bOpts.ymax / bs);
+    const m = makeCard(bPts, { ...bOpts, geomPts: geom, materials: shared });  // a second half reuses the first half's print
     if (!shared) { shared = m.material; for (const mat of shared) mat.color.multiplyScalar(0.92); }
+    if (!own) m.scale.set(bs, bs, 1);                       // A's print at A's scale, the cut card scaled (UVs stay in A's units)
+    m.userData.setGlow = setGlow;                            // lit panes on the second plane switch with the first
     const pivot = new THREE.Group();
     pivot.position.z = side * t * 1.02;                    // hinged on A's front (+1) or back (-1) face
     pivot.add(m);
     return pivot;
   });
   group.add(a, ...halves);
+  const open = (opts.angle * Math.PI) / 180;
   group.userData.follow = (p) => {
     const k = Math.min(1, Math.max(0, (p - 0.12) / 0.7)), e = k * k * (3 - 2 * k);
-    for (const h of halves) h.rotation.y = -(Math.PI / 2) * e;   // +x half swings to +z, -x half to -z
+    for (const h of halves) h.rotation.y = -open * e;   // the +x half swings toward +z, the -x half toward -z
   };
   group.userData.follow(1);
   return group;
@@ -349,11 +388,106 @@ export function boxFold({ w = 4, d = 3, wallH = 3, roofH = 1.8, overhang = 0.2, 
 /**
  * Layered card (bushes, hedges, coral heads, crowds, flower beds): 2-3 printed cards on ONE hinge, back to front, each a
  * little nearer the camera (z), so the layers overlap with a soft shadow between them, the stacked-card read of the
- * shipped bushes. layers: [{ pts, paint, z }] (z default 0.3 per layer); opts as makeCard. Folded, they lie in a stack.
+ * stacked-card read. layers: [{ pts, paint, z }] (z default 0.3 per layer); opts as makeCard. Folded, they lie in a stack.
  */
 export function layeredCard(layers, opts = {}) {
   const g = new THREE.Group();
   layers.forEach((L, i) => { const m = makeCard(L.pts, { ...opts, paint: L.paint, seed: (opts.seed ?? 1) + i * 13 }); m.position.z = L.z ?? i * 0.3; g.add(m); });
+  return g;
+}
+
+/**
+ * Fan pair (references/structures.md, layered): the piece plus a darker, mirrored, slightly taller copy standing just
+ * behind it and shifted sideways, on ONE hinge: depth from one side for the price of two cards (bushes, hedges, reeds,
+ * a far tree line, a crowd). opts as makeCard, plus rear: { scale 1.14, shift 0.2 (of the width), dz (default -0.12 x
+ * the height), tone 0.88, pts, paint } (pts / paint: a different rear piece).
+ */
+export function fanCard(pts, opts = {}) {
+  const { rear = {}, ...o } = opts;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const [x, y] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  const s = rear.scale ?? 1.14, shift = (rear.shift ?? 0.2) * (x1 - x0), dz = rear.dz ?? -0.12 * (y1 - y0);
+  const rp = (rear.pts || pts).map(([x, y]) => [-x * s + shift, y * s]).reverse();   // mirrored; reversed keeps the winding
+  const g = new THREE.Group();
+  const back = makeCard(rp, { ...o, paint: rear.paint || o.paint, seed: (o.seed ?? 1) + 7 });
+  for (const m of [].concat(back.material)) if (m.color) m.color.multiplyScalar(rear.tone ?? 0.88);
+  back.position.z = dz;
+  g.add(back, makeCard(pts, o));
+  return g;
+}
+
+/**
+ * Prism fold (references/structures.md, folded volumes): walls standing on ANY footprint polygon, joined edge to edge
+ * like a strip of card wrapped round it, with a lid or a pyramid / cone roof. A square or a rectangle with a flat roof,
+ * an L-shaped hall, a hexagonal kiosk; 8-12 sides read as a round tower, a silo, a drum or a well. footprint: [[x, z],
+ * ...] in order round the shape; its FIRST edge is the front wall (it is turned onto x, the shape behind it, z <= 0).
+ * Folded, the walls flatten like a paper tube (the front half of the walls in a line, the back half folded flat
+ * behind them: about half the perimeter wide) and the roof lies flat above the front wall; opening, the tube opens
+ * into the closed shape (p 0.15-0.75) and the roof closes after it (p 0.55-0.95).
+ * h: wall height. roof: 'flat' (a lid of the footprint's shape) | 'pyramid' (one triangle per wall meeting above the
+ * centroid: with many sides a cone; convex footprints only) | 'none'. roofH: the pyramid's height. paints: { wall:
+ * paint | [paint, ...] (cycled round the walls), roof: paint | [paint, ...] }. holes: { [wallIndex]: [outline, ...] } in the wall's own frame (x
+ * from 0 to its length, y up). print: card options for every panel (H.cardOpts(x, z)). Put it on a hinge (a node).
+ * With a flat lid, userData.top is a frame on the lid to build on (another structure type on top: a composition).
+ */
+export function prismFold(footprint, { h = 3, roof = 'flat', roofH = 1.6, paper, seed = 1, thickness = 0.08, edgeWidth = 0.06, paints = {}, holes = {}, rimLight, print = {} } = {}) {
+  // normalise: the first edge on x, centred on the origin, the shape behind it (z <= 0)
+  const [p0, p1] = footprint, ang = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]), ca = Math.cos(-ang), sa = Math.sin(-ang);
+  let fp = footprint.map(([x, z]) => [(x - p0[0]) * ca - (z - p0[1]) * sa, (x - p0[0]) * sa + (z - p0[1]) * ca]);
+  const L0 = fp[1][0];
+  fp = fp.map(([x, z]) => [x - L0 / 2, z]);
+  if (fp.reduce((s2, [, z]) => s2 + z, 0) > 0) fp = fp.map(([x, z]) => [x, -z]);   // the shape lies behind the front wall
+  const n = fp.length, base = { paper, thickness, edgeWidth, back: 'kraft', ...(rimLight ? { rimLight } : {}), pxPerUnit: print.pxPerUnit ?? 64, effects: print.effects ?? 1 };
+  const pick = (v, i) => (Array.isArray(v) ? v[i % v.length] : v);   // one print for every wall, or a list cycled round them
+  const len = (i) => Math.hypot(fp[(i + 1) % n][0] - fp[i][0], fp[(i + 1) % n][1] - fp[i][1]);
+  const head = (i) => Math.atan2(-(fp[(i + 1) % n][1] - fp[i][1]), fp[(i + 1) % n][0] - fp[i][0]);   // rotation about +y
+  const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  const g = new THREE.Group(), joints = [], tris = [];
+  // the tube's flattening fold: after the wall where half the perimeter is reached (the walls before it lie in a line,
+  // the rest fold back flat behind them)
+  let per = 0; for (let i = 0; i < n; i++) per += len(i);
+  let fold = n - 2; for (let i = 0, acc = 0; i < n - 1; i++) { acc += len(i); if (acc >= per / 2 - 1e-6) { fold = i; break; } }
+  let cx = 0, cz = 0; for (const [x, z] of fp) { cx += x / n; cz += z / n; }
+  let frame = g;
+  for (let i = 0; i < n; i++) {
+    const Li = len(i);
+    const wall = makeCard(P2shape.rect(Li, h).map(([x, y]) => [x + Li / 2, y]), { ...base, seed: seed + i * 7, paint: pick(paints.wall, i), holes: holes[i] || null,
+      folds: (x0, y0, x1, y1) => (Math.abs(y0) < 1e-6 && Math.abs(y1) < 1e-6) || (Math.abs(x0 - x1) < 1e-6 && (Math.abs(x0) < 1e-6 || Math.abs(x0 - Li) < 1e-6)) });
+    const holder = new THREE.Group();
+    if (i === 0) holder.position.x = -Li / 2;
+    holder.add(wall); frame.add(holder);
+    if (roof === 'pyramid') {   // the apex above the centroid, in this wall's final frame (x along it, z outward)
+      const a = head(i), wx = cx - fp[i][0], wz = cz - fp[i][1];
+      const ax = wx * Math.cos(a) - wz * Math.sin(a), az = wx * Math.sin(a) + wz * Math.cos(a);   // az < 0: inward
+      const sl = Math.hypot(roofH, az), tri = makeCard([[0, 0], [Li, 0], [ax, sl]], { ...base, seed: seed + 101 + i * 7, paint: pick(paints.roof, i), folds: ['bottom'] });
+      const pv = new THREE.Group(); pv.position.set(0, h, 0); pv.add(tri); holder.add(pv);
+      tris.push([pv, Math.atan2(-az, roofH)]);
+    }
+    if (i < n - 1) {   // the next wall hangs on this one's far edge
+      const j = new THREE.Group(); j.position.x = Li; holder.add(j);
+      joints.push([j, wrapA(head(i + 1) - head(i)), i === fold ? Math.PI : 0]); frame = j;
+    }
+  }
+  let lid = null;
+  if (roof === 'flat') {   // the footprint as a card hinged on the front wall's top edge (local y = depth behind it)
+    lid = new THREE.Group(); lid.position.set(0, h, thickness * 0.6);
+    const pts = fp.map(([x, z]) => [x, -z]);
+    lid.add(makeCard(pts, { ...base, seed: seed + 97, paint: pick(paints.roof, 0), folds: ['bottom'] }));
+    // a frame on the lid's top face, at the footprint's centroid, y up and z toward the camera once the lid has closed:
+    // pieces put in it (popup(..., { parent: node.userData.top }): a lamp, a dome, a rooftop garden) ride the lid
+    const top = new THREE.Group(); top.rotation.x = Math.PI / 2; top.position.set(cx, -cz, thickness * 0.6);
+    lid.add(top); g.userData.top = top;
+    g.add(lid);
+  }
+  const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  g.userData.follow = (p) => {
+    const e = sm(0.15, 0.75, p), e2 = sm(0.55, 0.95, p);
+    for (const [j, d, f] of joints) { j.rotation.y = f + (d - f) * e; if (f) j.position.z = -thickness * 1.3 * (1 - e); }   // the back layer a hair behind, folded
+    for (const [pv, th] of tris) pv.rotation.x = -th * e2;
+    if (lid) lid.rotation.x = -(Math.PI / 2) * e2;
+  };
+  g.userData.follow(1);
+  g.userData.footprint = fp;   // the normalised footprint (front wall on x, the shape behind): for a walk solid or wall
   return g;
 }
 
@@ -418,7 +552,7 @@ export function clusterLayout(x, z, { n = 4, size = 1, seed = 1, spread = 0.5 } 
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// light: warm key from the upper left, warm fill, warm sky; contact-hardening soft shadows
+// light: key from the upper left, frontal fill, hemisphere sky; contact-hardening soft shadows
 // ---------------------------------------------------------------------------------------------------------------
 
 /**
@@ -474,9 +608,10 @@ float papercraftPCSS( sampler2D sm, vec2 uv, float zr ) {
 }
 
 /**
- * Warm key + warm fill + warm sky. keyDir points FROM the scene TO the light: upper left, a little toward the viewer
- * (elevation ~44 deg). Key:fill ~3:1. A literal 3000 K key turns greens to lime: keep the key mildly warm and do
- * the rest in the grade (tint). Night: cool moon key + cool fill, warm practical lights (see references/look.md).
+ * Key + frontal fill + hemisphere sky; the defaults are the template's clear-day set (assets/lights.json 'day'): pass
+ * your light's colours and `ground` = your world's ground bounce. keyDir points FROM the scene TO the light: upper
+ * left, a little toward the viewer (elevation ~44 deg). Key:fill ~3:1. Never a literal 3000 K key: put warmth in the
+ * grade's tint (look.md section 5). Night: cool moon key + cool fill, warm practical lights (look.md section 8).
  */
 export function paperLights(scene, { key = '#ffdcb2', keyIntensity = 3.0, keyDir = [-0.8, 0.95, 0.55], fill = '#f2dcc2', fillIntensity = 0.95, fillDir = [0.45, 0.5, 1.0], sky = '#fff0da', ground = '#b39a78', skyIntensity = 0.42, target = new THREE.Vector3(), shadowExtent = 30, mapSize = 2048, distance = 60 } = {}) {
   const k = new THREE.DirectionalLight(key, keyIntensity);
@@ -522,8 +657,9 @@ export const LENS_DEFAULTS = {
   falloff: 0.12, falloffTint: 0.07,
   // silhouette depth line: a thin darker line where a card stands in front of something further away
   edgeLine: 0.3, edgeLineColor: '#c2aa94', edgeLinePx: 1.1,   // subtle: the printed rim is the edge; depth is single-sample
-  // contact occlusion (SSAO) tinted warm: every stand-up piece visibly touches the page. radius / bias in world units
-  // (~0.4 x hero height / ~0.02 x hero height); grey AO reads as dirt, paper occlusion is a warm deepening
+  // contact occlusion (SSAO) tinted with the world's shadow colour: every stand-up piece visibly touches the page.
+  // radius / bias in world units (~0.4 x hero height / ~0.02 x hero height); grey AO reads as dirt (aoTint default:
+  // a warm ground's umber; match it to the leak in other light)
   ao: 1.2, aoRadius: 1.6, aoBias: 0.08, aoTint: '#5a3214',
   // grade
   exposure: 0.8, tint: [1.02, 0.99, 0.97], saturation: 0.95, contrast: 1.1, greenDesat: 0.25, shadowTint: '#3a200c', shadowLift: 0.03,
@@ -643,7 +779,7 @@ void main() {
   }
   float depth = rawDepth( vUv );
   vec3 wp = worldAt( vUv, depth );
-  // warm contact occlusion (faded out inside the blur, where a sharp AO edge would give it away)
+  // contact occlusion in the world's shadow tint (faded out inside the blur, where a sharp AO edge would give it away)
   if ( uAo.x > 0.0 ) col *= mix( uAoTint, vec3( 1.0 ), mix( contactAO( vUv, texel ), 1.0, smoothstep( 2.0, 8.0, c ) ) );
   // light falloff across the frame (world space, so every material gets it): brighter / warmer toward the key side
   float t = clamp( dot( wp - uFocusW, uRight ) / uFallR, -1.0, 1.0 );
@@ -663,10 +799,11 @@ void main() {
   col = max( mix( vec3( l ), col, uGrade.z ), 0.0 );
   col = toSRGB( col );
   col = ( col - 0.42 ) * uGrade.y + 0.42;
-  // pull video-game yellow-green toward sage (cream, ochre, terracotta and teal are outside the mask)
+  // tame saturated yellow-green toward a muted paper green (hue-masked); under a warm key grey teals fall in the mask
+  // too: greenDesat <= 0.1 for teal-led worlds, lower it when the brief's greens are fresh (look.md sections 7, 9)
   float gm = smoothstep( 0.1, 0.3, col.g - col.b ) * smoothstep( -0.2, -0.05, col.g - col.r ) * uGreen;
   col = mix( col, mix( vec3( luma( col ) ), col, 0.45 ) * vec3( 0.97, 1.0, 1.03 ), clamp( gm, 0.0, 1.0 ) );
-  // warm lift in the deepest tones: shadows are umber, never black
+  // lift the deepest tones toward shadowTint (the world's shadow hue: umber on a warm ground, navy at night), never black
   col += uShadowTint * uGrade.w * ( 1.0 - smoothstep( 0.0, 0.45, l ) );
   // haze toward an exact display colour with ground distance from the focus point, counted only away from the camera
   // and sideways (the near foreground of a wide shot must never pale)
