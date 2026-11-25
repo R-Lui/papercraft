@@ -1,4 +1,22 @@
-# papercraft
+# papercraft + native Godot fork
+
+This fork adds `skills/papercraft-godot/`: a Godot 4-native version of the upstream papercraft skill. It
+replaces the browser templates with extruded cut-card meshes, spatial print shaders, physical hinge motion,
+a screen-space tilt-shift pass and a self-contained runnable demo.
+
+Run the demo:
+
+```bash
+/Applications/Godot.app/Contents/MacOS/Godot --path skills/papercraft-godot/assets/demo
+```
+
+Verify it:
+
+```bash
+skills/papercraft-godot/scripts/check_demo.sh
+```
+
+Upstream documentation follows.
 
 An agent skill for building games, interactive scenes, web pages, animations and videos in one handcrafted
 **pop-up papercraft style**, for any subject: printed cardstock pieces with thin cut edges that fold up on hinges from

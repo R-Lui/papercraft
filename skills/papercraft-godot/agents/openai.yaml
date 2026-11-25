@@ -1,0 +1,4 @@
+interface:
+  display_name: "Papercraft for Godot"
+  short_description: "Build handcrafted pop-up papercraft worlds natively in Godot 4."
+  default_prompt: "Build this scene as a native Godot 4 pop-up papercraft diorama."
